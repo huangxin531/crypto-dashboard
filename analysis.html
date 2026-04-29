@@ -179,7 +179,15 @@ header{background:#161b22;border-bottom:1px solid #30363d;padding:16px 32px;disp
       <span class="ticker-sym">XAG</span>
       <div style="display:flex;flex-direction:column;align-items:flex-start;gap:0">
         <span class="ticker-price" style="line-height:1.1">—</span>
-        <span style="font-size:11px;color:#a0aab6;font-weight:600">白银</span>
+        <span style="font-size:11px;color:#a0aab6;font-weight:600">白银/盎司</span>
+      </div>
+      <span class="ticker-chg">—</span>
+    </div>
+    <div class="ticker-item" id="tk-OIL">
+      <span class="ticker-sym">WTI</span>
+      <div style="display:flex;flex-direction:column;align-items:flex-start;gap:0">
+        <span class="ticker-price" style="line-height:1.1">—</span>
+        <span style="font-size:11px;color:#a0aab6;font-weight:600">原油/桶</span>
       </div>
       <span class="ticker-chg">—</span>
     </div>
@@ -756,25 +764,107 @@ async function fetchCoin(coin){
   }
 }
 
-// ─── Price ticker: individual calls so one bad symbol can't kill the rest ──
-const TICKER_PAIRS=[
-  {sym:'BTC', pair:'BTCUSDT'},
-  {sym:'ETH', pair:'ETHUSDT'},
-  {sym:'SOL', pair:'SOLUSDT'},
-  {sym:'XAUT',pair:'XAUTUSD'},   // Tether Gold on Binance is XAUTUSD (not XAUTUSDT)
-  {sym:'XAG', pair:'XAGUSD'},    // Silver token on Binance is XAGUSD
-];
+// ─── Individual commodity + crypto ticker fetchers ─────────────
+
+// BTC/ETH/SOL from Binance — returns normalised {price, chg} or null
+async function fetchBinanceTicker(pair){
+  try{
+    const r=await fetch(`${BINANCE}/ticker/24hr?symbol=${pair}`,{signal:AbortSignal.timeout(6000)});
+    if(!r.ok)return null;
+    const d=await r.json();
+    if(!d.lastPrice)return null;
+    return{price:parseFloat(d.lastPrice),chg:parseFloat(d.priceChangePercent)};
+  }catch{return null;}
+}
+
+// Gold: Binance XAUTUSDT → CoinGecko PAX Gold fallback
+async function fetchGoldPrice(){
+  try{
+    const r=await fetch(`${BINANCE}/ticker/24hr?symbol=XAUTUSDT`,{signal:AbortSignal.timeout(6000)});
+    if(r.ok){
+      const d=await r.json();
+      if(d.lastPrice)return{price:parseFloat(d.lastPrice),chg:parseFloat(d.priceChangePercent),src:'XAUTUSDT'};
+    }
+  }catch{}
+  // Fallback: CoinGecko PAX Gold (PAXG)
+  try{
+    const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd&include_24hr_change=true',{signal:AbortSignal.timeout(8000)});
+    if(r.ok){
+      const d=await r.json();
+      const p=d['pax-gold'];
+      if(p?.usd)return{price:p.usd,chg:p.usd_24h_change??null,src:'PAXG'};
+    }
+  }catch{}
+  return null;
+}
+
+// Silver: Coinbase public spot API (free, no key, CORS-ok). No 24h% from this endpoint.
+async function fetchSilverPrice(){
+  try{
+    const r=await fetch('https://api.coinbase.com/v2/prices/XAG-USD/spot',{signal:AbortSignal.timeout(6000)});
+    if(r.ok){
+      const d=await r.json();
+      const price=parseFloat(d.data?.amount);
+      if(!isNaN(price)&&price>0)return{price,chg:null,src:'Coinbase'};
+    }
+  }catch{}
+  // Fallback: Frankfurter API includes XAG (troy oz in USD)
+  try{
+    const r=await fetch('https://api.frankfurter.app/latest?from=XAG&to=USD',{signal:AbortSignal.timeout(6000)});
+    if(r.ok){
+      const d=await r.json();
+      const rate=d.rates?.USD;
+      if(rate)return{price:rate,chg:null,src:'Frankfurter'};
+    }
+  }catch{}
+  return null;
+}
+
+// Crude Oil: Yahoo Finance chart API (no key, CORS varies by endpoint)
+async function fetchCrudeOilPrice(){
+  try{
+    const r=await fetch('https://query2.finance.yahoo.com/v8/finance/chart/CL%3DF?interval=1d&range=2d&includePrePost=false',{signal:AbortSignal.timeout(7000)});
+    if(r.ok){
+      const d=await r.json();
+      const meta=d?.chart?.result?.[0]?.meta;
+      if(meta?.regularMarketPrice){
+        const price=meta.regularMarketPrice;
+        const prev =meta.previousClose||meta.chartPreviousClose||null;
+        return{price,chg:prev?((price-prev)/prev*100):null,src:'Yahoo'};
+      }
+    }
+  }catch{}
+  // Fallback 2: try v7 quote endpoint (different CORS policy)
+  try{
+    const r=await fetch('https://query1.finance.yahoo.com/v7/finance/quote?symbols=CL%3DF',{signal:AbortSignal.timeout(7000)});
+    if(r.ok){
+      const d=await r.json();
+      const q=d?.quoteResponse?.result?.[0];
+      if(q?.regularMarketPrice)return{price:q.regularMarketPrice,chg:q.regularMarketChangePercent??null,src:'Yahoo'};
+    }
+  }catch{}
+  return null;
+}
+
+// Aggregate all 6 tickers in parallel
 async function fetchAllTickers(){
-  const res=await Promise.allSettled(
-    TICKER_PAIRS.map(({pair})=>
-      fetch(`${BINANCE}/ticker/24hr?symbol=${pair}`,{signal:AbortSignal.timeout(6000)})
-        .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-    )
-  );
-  return TICKER_PAIRS.map(({sym},i)=>({
-    sym,
-    data:res[i].status==='fulfilled'&&res[i].value?.lastPrice?res[i].value:null,
-  }));
+  const[btc,eth,sol,gold,silver,oil]=await Promise.allSettled([
+    fetchBinanceTicker('BTCUSDT'),
+    fetchBinanceTicker('ETHUSDT'),
+    fetchBinanceTicker('SOLUSDT'),
+    fetchGoldPrice(),
+    fetchSilverPrice(),
+    fetchCrudeOilPrice(),
+  ]);
+  const v=r=>r.status==='fulfilled'?r.value:null;
+  return[
+    {sym:'BTC', data:v(btc)},
+    {sym:'ETH', data:v(eth)},
+    {sym:'SOL', data:v(sol)},
+    {sym:'XAUT',data:v(gold)},
+    {sym:'XAG', data:v(silver)},
+    {sym:'OIL', data:v(oil)},
+  ];
 }
 
 // ─── Market Overview helpers ───────────────────────────────────
@@ -869,25 +959,28 @@ async function loadSentiment(){
   ]);
 
   // ── Price Ticker ──
-  const NESTED={'XAUT':true,'XAG':true};
+  // NESTED tickers have subtitle divs; update child elements instead of innerHTML
+  const NESTED={'XAUT':true,'XAG':true,'OIL':true};
   try{
     (ticker.value||[]).forEach(({sym,data})=>{
-      if(!data)return;
-      const price=parseFloat(data.lastPrice);
-      const chg  =parseFloat(data.priceChangePercent);
-      if(isNaN(price)||isNaN(chg))return;
+      if(!data||!data.price||isNaN(data.price))return;
+      const price=data.price;
+      const chg  =data.chg;
       const el=document.getElementById('tk-'+sym);
       if(!el)return;
+      // Format change: show "—" when 24h% not available (e.g. silver from Coinbase)
+      const hasChg=chg!==null&&!isNaN(chg);
+      const chgTxt=hasChg?(chg>=0?'+':'')+chg.toFixed(2)+'%':'—';
+      const chgCls=hasChg?(chg>=0?'up':'dn'):'';
       if(NESTED[sym]){
-        // preserve subtitle span; only update price + chg
         const priceEl=el.querySelector('.ticker-price');
         const chgEl  =el.querySelector('.ticker-chg');
         if(priceEl)priceEl.textContent=fpTicker(price);
-        if(chgEl){chgEl.textContent=(chg>=0?'+':'')+chg.toFixed(2)+'%';chgEl.className='ticker-chg '+(chg>=0?'up':'dn');}
+        if(chgEl){chgEl.textContent=chgTxt;chgEl.className='ticker-chg'+(chgCls?' '+chgCls:'');}
       }else{
         el.innerHTML=`<span class="ticker-sym">${sym}</span>`+
           `<span class="ticker-price">${fpTicker(price)}</span>`+
-          `<span class="ticker-chg ${chg>=0?'up':'dn'}">${chg>=0?'+':''}${chg.toFixed(2)}%</span>`;
+          `<span class="ticker-chg${chgCls?' '+chgCls:''}">${chgTxt}</span>`;
       }
     });
   }catch{}
