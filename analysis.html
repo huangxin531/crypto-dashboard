@@ -183,11 +183,11 @@ header{background:#161b22;border-bottom:1px solid #30363d;padding:16px 32px;disp
       </div>
       <span class="ticker-chg">—</span>
     </div>
-    <div class="ticker-item" id="tk-OIL">
-      <span class="ticker-sym">WTI</span>
+    <div class="ticker-item" id="tk-NDX">
+      <span class="ticker-sym">NDX</span>
       <div style="display:flex;flex-direction:column;align-items:flex-start;gap:0">
         <span class="ticker-price" style="line-height:1.1">—</span>
-        <span style="font-size:11px;color:#a0aab6;font-weight:600">原油/桶</span>
+        <span style="font-size:11px;color:#a0aab6;font-weight:600">纳指100</span>
       </div>
       <span class="ticker-chg">—</span>
     </div>
@@ -223,21 +223,18 @@ header{background:#161b22;border-bottom:1px solid #30363d;padding:16px 32px;disp
     </div>
     <div class="sent-divider"></div>
 
-    <div class="sent-group">
-      <div class="sent-label">BTC ETF 净流入</div>
-      <div class="sent-row">
-        <span class="sent-val" id="etf-btc-val" style="color:#8b949e;font-size:14px">数据更新中</span>
-      </div>
-      <span class="sent-sub" id="etf-btc-label" style="color:#8b949e">当日净流入</span>
-    </div>
-    <div class="sent-divider"></div>
-
-    <div class="sent-group">
-      <div class="sent-label">ETH ETF 净流入</div>
-      <div class="sent-row">
-        <span class="sent-val" id="etf-eth-val" style="color:#8b949e;font-size:14px">数据更新中</span>
-      </div>
-      <span class="sent-sub" id="etf-eth-label" style="color:#8b949e">当日净流入</span>
+    <div class="sent-group" style="min-width:140px">
+      <div class="sent-label">BTC/ETH ETF</div>
+      <a href="https://farside.co.uk/btc/" target="_blank" rel="noopener noreferrer"
+         style="margin-top:6px;display:inline-flex;align-items:center;gap:5px;
+                color:#58a6ff;font-size:14px;font-weight:700;text-decoration:none;
+                background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.25);
+                padding:6px 14px;border-radius:8px;white-space:nowrap;transition:background .15s"
+         onmouseover="this.style.background='rgba(88,166,255,.2)'"
+         onmouseout="this.style.background='rgba(88,166,255,.1)'">
+        点击查看ETF流入 ↗
+      </a>
+      <span class="sent-sub" style="color:#a0aab6;margin-top:3px">farside.co.uk</span>
     </div>
     <div class="sent-divider"></div>
 
@@ -820,41 +817,42 @@ async function fetchSilverPrice(){
   return null;
 }
 
-// Crude Oil: Yahoo Finance chart API (no key, CORS varies by endpoint)
-async function fetchCrudeOilPrice(){
+// Nasdaq 100 Index (^NDX) via Yahoo Finance — two endpoint fallbacks
+async function fetchNDXPrice(){
+  const yf=async(url)=>{
+    const r=await fetch(url,{signal:AbortSignal.timeout(7000)});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    return r.json();
+  };
+  // Try chart v8 API first
   try{
-    const r=await fetch('https://query2.finance.yahoo.com/v8/finance/chart/CL%3DF?interval=1d&range=2d&includePrePost=false',{signal:AbortSignal.timeout(7000)});
-    if(r.ok){
-      const d=await r.json();
-      const meta=d?.chart?.result?.[0]?.meta;
-      if(meta?.regularMarketPrice){
-        const price=meta.regularMarketPrice;
-        const prev =meta.previousClose||meta.chartPreviousClose||null;
-        return{price,chg:prev?((price-prev)/prev*100):null,src:'Yahoo'};
-      }
+    const d=await yf('https://query2.finance.yahoo.com/v8/finance/chart/%5ENDX?interval=1d&range=2d&includePrePost=false');
+    const meta=d?.chart?.result?.[0]?.meta;
+    if(meta?.regularMarketPrice){
+      const price=meta.regularMarketPrice;
+      const prev =meta.previousClose||meta.chartPreviousClose||null;
+      return{price,chg:prev?((price-prev)/prev*100):null};
     }
   }catch{}
-  // Fallback 2: try v7 quote endpoint (different CORS policy)
+  // Fallback: v7 quote endpoint
   try{
-    const r=await fetch('https://query1.finance.yahoo.com/v7/finance/quote?symbols=CL%3DF',{signal:AbortSignal.timeout(7000)});
-    if(r.ok){
-      const d=await r.json();
-      const q=d?.quoteResponse?.result?.[0];
-      if(q?.regularMarketPrice)return{price:q.regularMarketPrice,chg:q.regularMarketChangePercent??null,src:'Yahoo'};
-    }
+    const d=await yf('https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5ENDX');
+    const q=d?.quoteResponse?.result?.[0];
+    if(q?.regularMarketPrice)
+      return{price:q.regularMarketPrice,chg:q.regularMarketChangePercent??null};
   }catch{}
   return null;
 }
 
 // Aggregate all 6 tickers in parallel
 async function fetchAllTickers(){
-  const[btc,eth,sol,gold,silver,oil]=await Promise.allSettled([
+  const[btc,eth,sol,gold,silver,ndx]=await Promise.allSettled([
     fetchBinanceTicker('BTCUSDT'),
     fetchBinanceTicker('ETHUSDT'),
     fetchBinanceTicker('SOLUSDT'),
     fetchGoldPrice(),
     fetchSilverPrice(),
-    fetchCrudeOilPrice(),
+    fetchNDXPrice(),
   ]);
   const v=r=>r.status==='fulfilled'?r.value:null;
   return[
@@ -863,7 +861,7 @@ async function fetchAllTickers(){
     {sym:'SOL', data:v(sol)},
     {sym:'XAUT',data:v(gold)},
     {sym:'XAG', data:v(silver)},
-    {sym:'OIL', data:v(oil)},
+    {sym:'NDX', data:v(ndx)},
   ];
 }
 
@@ -910,17 +908,32 @@ async function fetchETFFlow(){
   return res;
 }
 
-// ── Stablecoin: CoinCap gives per-coin market cap without rate limits ──
+// ── Stablecoin: CoinCap primary → CoinGecko fallback ──────────────
 async function fetchStablecoinMcap(){
+  // Source 1: CoinCap (individual asset market caps, no rate-limit issues)
   try{
     const[uR,cR]=await Promise.all([
-      fetch('https://api.coincap.io/v2/assets/tether',{signal:AbortSignal.timeout(6000)}).then(r=>r.json()),
-      fetch('https://api.coincap.io/v2/assets/usd-coin',{signal:AbortSignal.timeout(6000)}).then(r=>r.json()),
+      fetch('https://api.coincap.io/v2/assets/tether',  {signal:AbortSignal.timeout(6000)}).then(r=>r.json()),
+      fetch('https://api.coincap.io/v2/assets/usd-coin', {signal:AbortSignal.timeout(6000)}).then(r=>r.json()),
     ]);
     const u=parseFloat(uR.data?.marketCapUsd)||0;
     const c=parseFloat(cR.data?.marketCapUsd)||0;
-    return u+c>0?u+c:null;
-  }catch{return null;}
+    if(u+c>1e10)return u+c;  // sanity: combined should be >$10B
+  }catch{}
+  // Source 2: CoinGecko simple/price with market_cap flag
+  try{
+    const r=await fetch(
+      'https://api.coingecko.com/api/v3/simple/price?ids=tether%2Cusd-coin&vs_currencies=usd&include_market_cap=true',
+      {signal:AbortSignal.timeout(8000),headers:{'Accept':'application/json'}}
+    );
+    if(r.ok){
+      const d=await r.json();
+      const u=d['tether']?.usd_market_cap||0;
+      const c=d['usd-coin']?.usd_market_cap||0;
+      if(u+c>1e10)return u+c;
+    }
+  }catch{}
+  return null;
 }
 
 // ── BTC Dominance: CoinGecko /global; fallback = CoinCap ──
@@ -949,18 +962,17 @@ async function fetchBTCDominance(){
 
 async function loadSentiment(){
   // All fetches in parallel, each fails independently
-  const[fng,ls,ticker,stableRes,domRes,etfRes]=await Promise.allSettled([
+  const[fng,ls,ticker,stableRes,domRes]=await Promise.allSettled([
     fetch('https://api.alternative.me/fng/?limit=1',{signal:AbortSignal.timeout(7000)}).then(r=>r.json()),
     fetch('https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=BTCUSDT&period=5m&limit=1',{signal:AbortSignal.timeout(7000)}).then(r=>r.json()),
     fetchAllTickers(),
     fetchStablecoinMcap(),
     fetchBTCDominance(),
-    fetchETFFlow(),
   ]);
 
   // ── Price Ticker ──
   // NESTED tickers have subtitle divs; update child elements instead of innerHTML
-  const NESTED={'XAUT':true,'XAG':true,'OIL':true};
+  const NESTED={'XAUT':true,'XAG':true,'NDX':true};
   try{
     (ticker.value||[]).forEach(({sym,data})=>{
       if(!data||!data.price||isNaN(data.price))return;
@@ -1025,22 +1037,6 @@ async function loadSentiment(){
     }
   }catch{setEl('stable-val','—');}
 
-  // ── ETF Flows ──
-  try{
-    const{btc,eth}=etfRes.value||{};
-    if(btc!==null&&btc!==undefined){
-      const c=btc>0?'#56d364':btc<0?'#ff7b72':'#a0aab6';
-      setEl('etf-btc-val',(btc>0?'+':'')+fmtLarge(btc),c);
-      document.getElementById('etf-btc-val').style.fontSize='20px';
-      setEl('etf-btc-label',btc>0?'当日流入':'当日流出',c);
-    }
-    if(eth!==null&&eth!==undefined){
-      const c=eth>0?'#56d364':eth<0?'#ff7b72':'#a0aab6';
-      setEl('etf-eth-val',(eth>0?'+':'')+fmtLarge(eth),c);
-      document.getElementById('etf-eth-val').style.fontSize='20px';
-      setEl('etf-eth-label',eth>0?'当日流入':'当日流出',c);
-    }
-  }catch{}
 }
 
 // ─── Main load ─────────────────────────────────────────────────
