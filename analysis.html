@@ -119,9 +119,17 @@ header{background:#161b22;border-bottom:1px solid #30363d;padding:16px 32px;disp
   .grid{grid-template-columns:1fr;padding:12px}
   .guide-grid{grid-template-columns:1fr}
   .guide-section,.market-bar,.summary-bar{padding-left:14px;padding-right:14px}
-  .price-ticker{padding:8px 14px}
-  .ticker-item{padding:4px 14px;gap:8px}
-  .ticker-price{font-size:16px}
+  /* ── Price ticker: 2 rows × 3 cols on mobile ── */
+  .price-ticker{display:grid;grid-template-columns:repeat(3,1fr);padding:0;overflow-x:hidden;gap:0}
+  .ticker-item{display:flex;flex-direction:column;align-items:center;text-align:center;
+               padding:10px 6px;gap:2px;flex:none;white-space:nowrap;
+               border-right:1px solid #21262d;border-bottom:1px solid #21262d}
+  .ticker-item:first-child{padding-left:6px}   /* reset desktop :first-child rule */
+  .ticker-item:nth-child(3n){border-right:none} /* 3rd col: no right border */
+  .ticker-item:nth-child(n+4){border-bottom:none} /* 2nd row: no bottom border */
+  .ticker-sym{font-size:13px;min-width:0}
+  .ticker-price{font-size:15px}
+  .ticker-chg{font-size:12px;min-width:0}
   .mkt-sent{padding:12px 14px}
   .h-left h1{font-size:19px}
   .sent-group{padding:0 12px;min-width:100px}
@@ -169,7 +177,7 @@ header{background:#161b22;border-bottom:1px solid #30363d;padding:16px 32px;disp
     </div>
     <div class="ticker-item" id="tk-XAUT">
       <span class="ticker-sym">XAUT</span>
-      <div style="display:flex;flex-direction:column;align-items:flex-start;gap:0">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:0">
         <span class="ticker-price" style="line-height:1.1">—</span>
         <span style="font-size:11px;color:#a0aab6;font-weight:600">黄金</span>
       </div>
@@ -177,7 +185,7 @@ header{background:#161b22;border-bottom:1px solid #30363d;padding:16px 32px;disp
     </div>
     <div class="ticker-item" id="tk-XAG">
       <span class="ticker-sym">XAG</span>
-      <div style="display:flex;flex-direction:column;align-items:flex-start;gap:0">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:0">
         <span class="ticker-price" style="line-height:1.1">—</span>
         <span style="font-size:11px;color:#a0aab6;font-weight:600">白银/盎司</span>
       </div>
@@ -185,7 +193,7 @@ header{background:#161b22;border-bottom:1px solid #30363d;padding:16px 32px;disp
     </div>
     <div class="ticker-item" id="tk-NDX">
       <span class="ticker-sym">NDX</span>
-      <div style="display:flex;flex-direction:column;align-items:flex-start;gap:0">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:0">
         <span class="ticker-price" style="line-height:1.1">—</span>
         <span style="font-size:11px;color:#a0aab6;font-weight:600">纳指100</span>
       </div>
