@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crypto Dashboard</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --green: #3fb950;
+      --red: #f85149;
+      --blue: #58a6ff;
+      --purple: #bc8cff;
+      --orange: #e3b341;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', -apple-system, system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .dashboard { max-width: 1400px; margin: 0 auto; }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #58a6ff, #bc8cff);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #58a6ff, #bc8cff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .countdown-badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      min-width: 56px;
+      text-align: center;
+    }
+
+    /* ── Section ── */
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Major Price Cards ── */
+    .major-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .major-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.25s, transform 0.2s;
+      cursor: default;
+    }
+
+    .major-card:hover {
+      border-color: #58a6ff55;
+      transform: translateY(-2px);
+    }
+
+    .major-card .accent-bar {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+
+    .major-card .accent-glow {
+      position: absolute;
+      top: -60px; right: -40px;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      opacity: 0.04;
+      pointer-events: none;
+    }
+
+    .coin-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .coin-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .coin-avatar.btc { background: rgba(247,147,26,0.18); color: #f7931a; }
+    .coin-avatar.eth { background: rgba(98,126,234,0.18); color: #627eea; }
+    .coin-avatar.sol { background: rgba(153,69,255,0.18); color: #9945ff; }
+
+    .coin-meta { flex: 1; }
+    .coin-ticker { font-weight: 700; font-size: 1rem; }
+    .coin-name-small { font-size: 0.72rem; color: var(--muted); margin-top: 1px; }
+
+    .major-price {
+      font-size: 1.9rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+      line-height: 1;
+    }
+
+    .stats-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .change-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 8px;
+    }
+
+    .change-badge.up { background: rgba(63,185,80,0.15); color: var(--green); }
+    .change-badge.down { background: rgba(248,81,73,0.15); color: var(--red); }
+
+    .vol-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    /* ── Portfolio Grid ── */
+    .portfolio-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .portfolio-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      transition: border-color 0.2s, transform 0.2s;
+      cursor: default;
+    }
+
+    .portfolio-card:hover {
+      border-color: #58a6ff44;
+      transform: translateY(-1px);
+    }
+
+    .portfolio-card .coin-row { margin-bottom: 12px; }
+
+    .portfolio-card .coin-avatar {
+      width: 32px;
+      height: 32px;
+      font-size: 0.7rem;
+      background: rgba(88,166,255,0.12);
+      color: var(--blue);
+    }
+
+    .portfolio-card .coin-ticker { font-size: 0.9rem; }
+
+    .port-price {
+      font-size: 1.2rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 6px;
+      line-height: 1;
+    }
+
+    .port-na {
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-style: italic;
+      margin-bottom: 6px;
+    }
+
+    /* ── Bottom Row ── */
+    .bottom-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px;
+    }
+
+    /* ── Fear & Greed ── */
+    .fg-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 8px;
+    }
+
+    .gauge-wrap {
+      position: relative;
+      width: 210px;
+      height: 115px;
+      margin-bottom: 12px;
+    }
+
+    .gauge-wrap svg { width: 100%; height: 100%; overflow: visible; }
+
+    .gauge-center-text {
+      position: absolute;
+      bottom: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .gauge-number {
+      font-size: 2.4rem;
+      font-weight: 800;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .fg-label {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .fg-sublabel {
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .fg-scale {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .fg-scale-item {
+      text-align: center;
+      flex: 1;
+    }
+
+    .fg-scale-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin: 0 auto 4px;
+    }
+
+    .fg-scale-text { font-size: 0.65rem; color: var(--muted); }
+
+    /* ── Funding Rates ── */
+    .funding-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .funding-row:first-child { padding-top: 4px; }
+    .funding-row:last-child { border-bottom: none; padding-bottom: 4px; }
+
+    .funding-left { display: flex; align-items: center; gap: 12px; }
+
+    .funding-info { }
+    .funding-coin-name { font-weight: 600; font-size: 0.95rem; }
+    .funding-next { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+
+    .funding-right { text-align: right; }
+
+    .funding-rate-value {
+      font-size: 1.15rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .funding-rate-value.pos { color: var(--green); }
+    .funding-rate-value.neg { color: var(--red); }
+
+    .funding-direction {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .funding-apr {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
+    /* ── Skeleton loader ── */
+    .skel {
+      background: linear-gradient(90deg, var(--surface2) 25%, #2d333b 50%, var(--surface2) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s ease-in-out infinite;
+      border-radius: 6px;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .skel-text { height: 14px; margin-bottom: 8px; }
+    .skel-price { height: 32px; margin-bottom: 10px; }
+    .skel-badge { height: 22px; width: 70px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .major-grid { grid-template-columns: 1fr; }
+      .bottom-row { grid-template-columns: 1fr; }
+      .portfolio-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 480px) {
+      body { padding: 12px; }
+      .major-price { font-size: 1.5rem; }
+      .portfolio-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="dashboard">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">📊</div>
+      <h1>Crypto Dashboard</h1>
+    </div>
+    <div class="header-right">
+      <div class="status-badge">
+        <div class="pulse-dot"></div>
+        <span id="last-update">连接中…</span>
+      </div>
+      <div class="countdown-badge" id="countdown">30s</div>
+    </div>
+  </header>
+
+  <!-- Major Prices -->
+  <div class="section-label">主要价格</div>
+  <div class="major-grid" id="major-prices">
+    <div class="major-card"><div class="skel skel-text" style="width:60%"></div><div class="skel skel-price"></div><div class="skel skel-badge"></div></div>
+    <div class="major-card"><div class="skel skel-text" style="width:60%"></div><div class="skel skel-price"></div><div class="skel skel-badge"></div></div>
+    <div class="major-card"><div class="skel skel-text" style="width:60%"></div><div class="skel skel-price"></div><div class="skel skel-badge"></div></div>
+  </div>
+
+  <!-- Portfolio -->
+  <div class="section-label">我的持仓</div>
+  <div class="portfolio-grid" id="portfolio">
+    <!-- filled by JS -->
+  </div>
+
+  <!-- Bottom -->
+  <div class="bottom-row">
+    <div>
+      <div class="section-label">市场情绪</div>
+      <div class="panel">
+        <div class="fg-inner" id="fear-greed">
+          <div class="skel" style="width:180px;height:90px;border-radius:12px;margin-bottom:16px"></div>
+          <div class="skel skel-text" style="width:100px"></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="section-label">资金费率（永续合约）</div>
+      <div class="panel" id="funding-rates">
+        <div style="display:flex;flex-direction:column;gap:12px;padding:8px 0">
+          <div class="skel" style="height:48px;border-radius:8px"></div>
+          <div class="skel" style="height:48px;border-radius:8px"></div>
+          <div class="skel" style="height:48px;border-radius:8px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Config ──────────────────────────────────────────────────
+// id = CoinGecko coin ID; symbol = Bybit/futures symbol
+const MAJOR = [
+  { id: 'bitcoin',  symbol: 'BTCUSDT', ticker: 'BTC', name: 'Bitcoin',  cls: 'btc', glow: '#f7931a' },
+  { id: 'ethereum', symbol: 'ETHUSDT', ticker: 'ETH', name: 'Ethereum', cls: 'eth', glow: '#627eea' },
+  { id: 'solana',   symbol: 'SOLUSDT', ticker: 'SOL', name: 'Solana',   cls: 'sol', glow: '#9945ff' },
+];
+
+const PORTFOLIO = [
+  { id: 'worldcoin-wld',  ticker: 'WLD',  name: 'Worldcoin' },
+  { id: 'plasma',         ticker: 'XPL',  name: 'Plasma' },
+  { id: 'solana',         ticker: 'SOL',  name: 'Solana' },
+  { id: 'pudgy-penguins', ticker: 'PENGU',name: 'Pudgy Penguins' },
+  { id: 'monad',          ticker: 'MON',  name: 'Monad' },
+  { id: 'ordinals',       ticker: 'ORDI', name: 'Ordinals' },
+  { id: 'wormhole',       ticker: 'W',    name: 'Wormhole' },
+  { id: 'ftx-token',      ticker: 'FTT',  name: 'FTX Token' },
+  { id: 'ondo-finance',   ticker: 'ONDO', name: 'Ondo Finance' },
+];
+
+const FUNDING_COINS = [
+  { symbol: 'BTCUSDT', ticker: 'BTC', cls: 'btc' },
+  { symbol: 'ETHUSDT', ticker: 'ETH', cls: 'eth' },
+  { symbol: 'SOLUSDT', ticker: 'SOL', cls: 'sol' },
+];
+
+// ── Formatters ───────────────────────────────────────────────
+function fmtPrice(p) {
+  p = parseFloat(p);
+  if (p >= 10000) return '$' + p.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  if (p >= 1000)  return '$' + p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (p >= 100)   return '$' + p.toFixed(2);
+  if (p >= 1)     return '$' + p.toFixed(4);
+  if (p >= 0.01)  return '$' + p.toFixed(5);
+  return '$' + p.toFixed(6);
+}
+
+function fmtChange(c) {
+  c = parseFloat(c);
+  return (c >= 0 ? '+' : '') + c.toFixed(2) + '%';
+}
+
+function fmtVol(v) {
+  v = parseFloat(v);
+  if (v >= 1e9) return (v / 1e9).toFixed(2) + 'B';
+  if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+  return v.toFixed(0);
+}
+
+function fmtFunding(r) {
+  r = parseFloat(r) * 100;
+  return (r >= 0 ? '+' : '') + r.toFixed(4) + '%';
+}
+
+function fmtNextFunding(ts) {
+  const diff = ts - Date.now();
+  if (diff <= 0) return '即将结算';
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  return `${h}h ${m}m 后结算`;
+}
+
+// ── Fear & Greed gauge ───────────────────────────────────────
+const FG_ZONES = [
+  { from: 0,  to: 25,  color: '#f85149', label: '极度恐惧' },
+  { from: 25, to: 45,  color: '#e3812b', label: '恐惧' },
+  { from: 45, to: 55,  color: '#e3b341', label: '中性' },
+  { from: 55, to: 75,  color: '#3fb950', label: '贪婪' },
+  { from: 75, to: 100, color: '#00d084', label: '极度贪婪' },
+];
+
+function fgColor(v) {
+  for (const z of FG_ZONES) if (v >= z.from && v <= z.to) return z.color;
+  return '#8b949e';
+}
+
+function fgLabel(v) {
+  for (const z of FG_ZONES) if (v >= z.from && v <= z.to) return z.label;
+  return '';
+}
+
+function buildGauge(value) {
+  const CX = 105, CY = 100, R = 90;
+
+  function ptOnArc(pct) {
+    const a = (1 - pct / 100) * Math.PI;
+    return [CX + R * Math.cos(a), CY - R * Math.sin(a)];
+  }
+
+  function arcSeg(from, to, color, opacity = 1) {
+    const [x1, y1] = ptOnArc(from);
+    const [x2, y2] = ptOnArc(to);
+    const large = (to - from) > 50 ? 1 : 0;
+    return `<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${R} ${R} 0 ${large} 0 ${x2.toFixed(2)} ${y2.toFixed(2)}"
+      fill="none" stroke="${color}" stroke-width="14" stroke-linecap="round" opacity="${opacity}"/>`;
+  }
+
+  // Background track
+  const [bx1, by1] = ptOnArc(0);
+  const [bx2, by2] = ptOnArc(100);
+  const bgArc = `<path d="M ${bx1.toFixed(2)} ${by1.toFixed(2)} A ${R} ${R} 0 0 0 ${bx2.toFixed(2)} ${by2.toFixed(2)}"
+    fill="none" stroke="#21262d" stroke-width="14" stroke-linecap="round"/>`;
+
+  // Colored zone arcs
+  const zoneArcs = FG_ZONES.map(z => arcSeg(z.from, z.to, z.color, 0.45)).join('\n');
+
+  // Active fill arc (from 0 to value)
+  const fillArc = value > 0 ? arcSeg(0, Math.min(value, 99.9), fgColor(value), 1) : '';
+
+  // Needle
+  const needleAngle = (1 - value / 100) * Math.PI;
+  const nx = CX + (R - 10) * Math.cos(needleAngle);
+  const ny = CY - (R - 10) * Math.sin(needleAngle);
+  const color = fgColor(value);
+
+  const needle = `
+    <line x1="${CX}" y1="${CY}" x2="${nx.toFixed(2)}" y2="${ny.toFixed(2)}"
+      stroke="${color}" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="${CX}" cy="${CY}" r="7" fill="${color}"/>
+    <circle cx="${CX}" cy="${CY}" r="3" fill="var(--surface)"/>
+  `;
+
+  // Labels
+  const labels = `
+    <text x="${ptOnArc(2)[0] - 4}" y="${ptOnArc(2)[1] + 14}" font-size="9" fill="#f85149" opacity="0.7" text-anchor="middle">0</text>
+    <text x="${CX}" y="${CY - R - 8}" font-size="9" fill="var(--muted)" text-anchor="middle">50</text>
+    <text x="${ptOnArc(98)[0] + 4}" y="${ptOnArc(98)[1] + 14}" font-size="9" fill="#00d084" opacity="0.7" text-anchor="middle">100</text>
+  `;
+
+  const svgW = CX * 2, svgH = CY + 12;
+
+  return `
+    <div class="gauge-wrap" style="width:${svgW}px;height:${svgH}px">
+      <svg viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg">
+        ${bgArc}
+        ${zoneArcs}
+        ${fillArc}
+        ${needle}
+        ${labels}
+      </svg>
+      <div class="gauge-center-text">
+        <div class="gauge-number" style="color:${color}">${value}</div>
+      </div>
+    </div>
+    <div class="fg-label" style="color:${color}">${fgLabel(value)}</div>
+    <div class="fg-sublabel">加密货币恐惧贪婪指数 (0–100)</div>
+    <div class="fg-scale">
+      ${FG_ZONES.map(z => `
+        <div class="fg-scale-item">
+          <div class="fg-scale-dot" style="background:${z.color}"></div>
+          <div class="fg-scale-text">${z.label}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ── Renderers ────────────────────────────────────────────────
+function renderMajorCard(coin, data) {
+  if (!data) return `
+    <div class="major-card">
+      <div class="skel skel-text" style="width:50%"></div>
+      <div class="skel skel-price"></div>
+      <div class="skel skel-badge"></div>
+    </div>`;
+
+  const change = parseFloat(data.priceChangePercent);
+  const up = change >= 0;
+  const vol24h = parseFloat(data.quoteVolume);
+
+  return `
+    <div class="major-card">
+      <div class="accent-bar" style="background:linear-gradient(90deg,${coin.glow}88,${coin.glow}22)"></div>
+      <div class="accent-glow" style="background:${coin.glow}"></div>
+      <div class="coin-row">
+        <div class="coin-avatar ${coin.cls}">${coin.ticker}</div>
+        <div class="coin-meta">
+          <div class="coin-ticker">${coin.ticker}</div>
+          <div class="coin-name-small">${coin.name}</div>
+        </div>
+      </div>
+      <div class="major-price">${fmtPrice(data.lastPrice)}</div>
+      <div class="stats-row">
+        <span class="change-badge ${up ? 'up' : 'down'}">
+          ${up ? '▲' : '▼'} ${Math.abs(change).toFixed(2)}%
+        </span>
+        <span class="vol-label">Vol $${fmtVol(vol24h)}</span>
+      </div>
+    </div>`;
+}
+
+function renderPortfolioCard(coin, data) {
+  const initial = coin.ticker[0];
+  if (!data) return `
+    <div class="portfolio-card">
+      <div class="coin-row">
+        <div class="coin-avatar" style="background:rgba(139,148,158,0.12);color:var(--muted)">${initial}</div>
+        <div class="coin-meta">
+          <div class="coin-ticker">${coin.ticker}</div>
+          <div class="coin-name-small">${coin.name}</div>
+        </div>
+      </div>
+      <div class="port-na">暂无数据</div>
+      <span class="change-badge" style="background:var(--surface2);color:var(--muted);font-size:0.75rem">—</span>
+    </div>`;
+
+  const change = parseFloat(data.priceChangePercent);
+  const up = change >= 0;
+  return `
+    <div class="portfolio-card">
+      <div class="coin-row">
+        <div class="coin-avatar">${initial}</div>
+        <div class="coin-meta">
+          <div class="coin-ticker">${coin.ticker}</div>
+          <div class="coin-name-small">${coin.name}</div>
+        </div>
+      </div>
+      <div class="port-price">${fmtPrice(data.lastPrice)}</div>
+      <span class="change-badge ${up ? 'up' : 'down'}">
+        ${up ? '▲' : '▼'} ${Math.abs(change).toFixed(2)}%
+      </span>
+    </div>`;
+}
+
+function renderFundingRow(coin, data) {
+  if (!data) return `
+    <div class="funding-row">
+      <div class="funding-left">
+        <div class="coin-avatar ${coin.cls}" style="width:34px;height:34px;font-size:0.7rem">${coin.ticker}</div>
+        <div class="funding-info">
+          <div class="funding-coin-name">${coin.ticker}/USDT</div>
+          <div class="funding-next">—</div>
+        </div>
+      </div>
+      <div class="funding-right">
+        <div class="funding-rate-value" style="color:var(--muted)">—</div>
+      </div>
+    </div>`;
+
+  const rate = parseFloat(data.lastFundingRate);
+  const rateStr = fmtFunding(data.lastFundingRate);
+  const annualized = (Math.abs(rate) * 3 * 365 * 100).toFixed(1);
+  const pos = rate >= 0;
+
+  return `
+    <div class="funding-row">
+      <div class="funding-left">
+        <div class="coin-avatar ${coin.cls}" style="width:34px;height:34px;font-size:0.7rem">${coin.ticker}</div>
+        <div class="funding-info">
+          <div class="funding-coin-name">${coin.ticker}/USDT 永续</div>
+          <div class="funding-next">${fmtNextFunding(data.nextFundingTime)}</div>
+        </div>
+      </div>
+      <div class="funding-right">
+        <div class="funding-rate-value ${pos ? 'pos' : 'neg'}">${rateStr}</div>
+        <div class="funding-direction">${pos ? '多头付空头' : '空头付多头'}</div>
+        <div class="funding-apr">年化约 ${annualized}%</div>
+      </div>
+    </div>`;
+}
+
+// ── Data fetching ─────────────────────────────────────────────
+async function fetchPrices() {
+  const allIds = [...new Set([
+    ...MAJOR.map(c => c.id),
+    ...PORTFOLIO.map(c => c.id).filter(Boolean),
+  ])];
+  const url = 'https://api.coingecko.com/api/v3/simple/price?ids=' +
+    allIds.join(',') +
+    '&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true';
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('CoinGecko API error ' + res.status);
+  const json = await res.json();
+  // Normalize to { lastPrice, priceChangePercent, quoteVolume } keyed by CoinGecko id
+  const map = {};
+  for (const [id, d] of Object.entries(json)) {
+    map[id] = {
+      lastPrice: d.usd,
+      priceChangePercent: d.usd_24h_change ?? 0,
+      quoteVolume: d.usd_24h_vol ?? 0,
+    };
+  }
+  return map;
+}
+
+async function fetchFearGreed() {
+  const res = await fetch('https://api.alternative.me/fng/?limit=1');
+  if (!res.ok) throw new Error('F&G API error');
+  const json = await res.json();
+  return parseInt(json.data[0].value, 10);
+}
+
+async function fetchFunding() {
+  const results = await Promise.all(
+    FUNDING_COINS.map(c =>
+      fetch(`https://api.bybit.com/v5/market/tickers?category=linear&symbol=${c.symbol}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(json => {
+          const item = json?.result?.list?.[0];
+          if (!item) return null;
+          return {
+            lastFundingRate: item.fundingRate,
+            nextFundingTime: parseInt(item.nextFundingTime, 10),
+          };
+        })
+        .catch(() => null)
+    )
+  );
+  const map = {};
+  results.forEach((d, i) => {
+    if (d) map[FUNDING_COINS[i].symbol] = d;
+  });
+  return map;
+}
+
+// ── Dashboard update ──────────────────────────────────────────
+async function update() {
+  try {
+    const [prices, fgValue, funding] = await Promise.allSettled([
+      fetchPrices(),
+      fetchFearGreed(),
+      fetchFunding(),
+    ]);
+
+    // Major prices
+    const priceMap = prices.status === 'fulfilled' ? prices.value : {};
+    document.getElementById('major-prices').innerHTML =
+      MAJOR.map(c => renderMajorCard(c, priceMap[c.id])).join('');
+
+    // Portfolio
+    document.getElementById('portfolio').innerHTML =
+      PORTFOLIO.map(c => renderPortfolioCard(c, c.id ? priceMap[c.id] : null)).join('');
+
+    // Fear & Greed
+    if (fgValue.status === 'fulfilled') {
+      document.getElementById('fear-greed').innerHTML = buildGauge(fgValue.value);
+    } else {
+      document.getElementById('fear-greed').innerHTML =
+        '<div style="color:var(--muted);text-align:center;padding:20px">获取失败</div>';
+    }
+
+    // Funding rates
+    const fundingMap = funding.status === 'fulfilled' ? funding.value : {};
+    document.getElementById('funding-rates').innerHTML =
+      FUNDING_COINS.map(c => renderFundingRow(c, fundingMap[c.symbol])).join('');
+
+    // Timestamp
+    const now = new Date();
+    document.getElementById('last-update').textContent =
+      '更新于 ' + now.toLocaleTimeString('zh-CN', { hour12: false });
+
+  } catch (err) {
+    console.error('Dashboard update failed:', err);
+    document.getElementById('last-update').textContent = '更新失败，稍后重试';
+  }
+}
+
+// ── Countdown + auto-refresh ──────────────────────────────────
+let cdTimer = null;
+let cdLeft = 30;
+
+function startCountdown() {
+  if (cdTimer) clearInterval(cdTimer);
+  cdLeft = 30;
+  document.getElementById('countdown').textContent = cdLeft + 's';
+  cdTimer = setInterval(() => {
+    cdLeft--;
+    document.getElementById('countdown').textContent = cdLeft + 's';
+    if (cdLeft <= 0) {
+      clearInterval(cdTimer);
+      update().finally(startCountdown);
+    }
+  }, 1000);
+}
+
+// Boot
+update().finally(startCountdown);
+</script>
+</body>
+</html>
