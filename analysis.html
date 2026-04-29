@@ -756,6 +756,27 @@ async function fetchCoin(coin){
   }
 }
 
+// ─── Price ticker: individual calls so one bad symbol can't kill the rest ──
+const TICKER_PAIRS=[
+  {sym:'BTC', pair:'BTCUSDT'},
+  {sym:'ETH', pair:'ETHUSDT'},
+  {sym:'SOL', pair:'SOLUSDT'},
+  {sym:'XAUT',pair:'XAUTUSD'},   // Tether Gold on Binance is XAUTUSD (not XAUTUSDT)
+  {sym:'XAG', pair:'XAGUSD'},    // Silver token on Binance is XAGUSD
+];
+async function fetchAllTickers(){
+  const res=await Promise.allSettled(
+    TICKER_PAIRS.map(({pair})=>
+      fetch(`${BINANCE}/ticker/24hr?symbol=${pair}`,{signal:AbortSignal.timeout(6000)})
+        .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    )
+  );
+  return TICKER_PAIRS.map(({sym},i)=>({
+    sym,
+    data:res[i].status==='fulfilled'&&res[i].value?.lastPrice?res[i].value:null,
+  }));
+}
+
 // ─── Market Overview helpers ───────────────────────────────────
 function fngColor(v){
   if(v<=24)return'#f85149';if(v<=44)return'#d29922';
@@ -841,32 +862,28 @@ async function loadSentiment(){
   const[fng,ls,ticker,stableRes,domRes,etfRes]=await Promise.allSettled([
     fetch('https://api.alternative.me/fng/?limit=1',{signal:AbortSignal.timeout(7000)}).then(r=>r.json()),
     fetch('https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=BTCUSDT&period=5m&limit=1',{signal:AbortSignal.timeout(7000)}).then(r=>r.json()),
-    fetch(`${BINANCE}/ticker/24hr?symbols=${encodeURIComponent('["BTCUSDT","ETHUSDT","SOLUSDT","XAUTUSDT","XAGUSDT"]')}`).then(r=>r.json()),
+    fetchAllTickers(),
     fetchStablecoinMcap(),
     fetchBTCDominance(),
     fetchETFFlow(),
   ]);
 
   // ── Price Ticker ──
-  // XAUT / XAG have a nested structure (price + subtitle div), so update child elements
-  // instead of replacing innerHTML for those two
-  const NESTED_TICKERS=new Set(['XAUT','XAG']);
+  const NESTED={'XAUT':true,'XAG':true};
   try{
-    ticker.value.forEach(t=>{
-      const sym=t.symbol.replace('USDT','');
-      const price=parseFloat(t.lastPrice);
-      const chg=parseFloat(t.priceChangePercent);
+    (ticker.value||[]).forEach(({sym,data})=>{
+      if(!data)return;
+      const price=parseFloat(data.lastPrice);
+      const chg  =parseFloat(data.priceChangePercent);
+      if(isNaN(price)||isNaN(chg))return;
       const el=document.getElementById('tk-'+sym);
       if(!el)return;
-      if(NESTED_TICKERS.has(sym)){
-        // update only the dynamic parts; leave the "黄金"/"白银" subtitle intact
+      if(NESTED[sym]){
+        // preserve subtitle span; only update price + chg
         const priceEl=el.querySelector('.ticker-price');
         const chgEl  =el.querySelector('.ticker-chg');
         if(priceEl)priceEl.textContent=fpTicker(price);
-        if(chgEl){
-          chgEl.textContent=(chg>=0?'+':'')+chg.toFixed(2)+'%';
-          chgEl.className='ticker-chg '+(chg>=0?'up':'dn');
-        }
+        if(chgEl){chgEl.textContent=(chg>=0?'+':'')+chg.toFixed(2)+'%';chgEl.className='ticker-chg '+(chg>=0?'up':'dn');}
       }else{
         el.innerHTML=`<span class="ticker-sym">${sym}</span>`+
           `<span class="ticker-price">${fpTicker(price)}</span>`+
