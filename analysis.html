@@ -115,6 +115,20 @@ header{background:#161b22;border-bottom:1px solid #30363d;padding:16px 32px;disp
 .gcard-body strong{color:#d8dde3}
 .gtip{background:#1c2333;border-left:3px solid #58a6ff;padding:10px 14px;border-radius:0 6px 6px 0;font-size:14px;color:#79b8ff;line-height:1.75;margin-top:12px}
 
+/* ── Auth Gate ── */
+#auth-gate{position:fixed;inset:0;background:#0d1117;z-index:9999;display:none;align-items:center;justify-content:center}
+.auth-card{background:#161b22;border:1px solid #30363d;border-radius:16px;padding:44px 38px;width:360px;max-width:92vw;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.7)}
+.auth-icon{font-size:44px;margin-bottom:14px;line-height:1}
+.auth-title{font-size:22px;font-weight:700;color:#f0f6fc;margin-bottom:6px}
+.auth-sub{font-size:15px;color:#a0aab6;margin-bottom:28px}
+.auth-input{width:100%;background:#21262d;border:1px solid #30363d;border-radius:8px;padding:13px 18px;font-size:17px;color:#e8edf3;outline:none;text-align:center;letter-spacing:3px;transition:border-color .15s,box-shadow .15s;font-family:inherit}
+.auth-input:focus{border-color:#58a6ff;box-shadow:0 0 0 3px rgba(88,166,255,.15)}
+.auth-input::placeholder{letter-spacing:0;color:#8b949e}
+.auth-error{color:#ff7b72;font-size:14px;font-weight:600;margin-top:12px;display:none}
+.auth-btn{margin-top:22px;width:100%;background:#238636;border:1px solid #2ea043;color:#fff;padding:13px;border-radius:8px;font-size:17px;font-weight:700;cursor:pointer;transition:background .15s;font-family:inherit}
+.auth-btn:hover{background:#2ea043}
+@keyframes authShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+
 @media(max-width:680px){
   .grid{grid-template-columns:1fr;padding:12px}
   .guide-grid{grid-template-columns:1fr}
@@ -147,6 +161,20 @@ header{background:#161b22;border-bottom:1px solid #30363d;padding:16px 32px;disp
 </style>
 </head>
 <body>
+
+<!-- ─── Auth Gate ───────────────────────────────────────────── -->
+<div id="auth-gate">
+  <div class="auth-card">
+    <div class="auth-icon">🔐</div>
+    <div class="auth-title">加密货币技术分析</div>
+    <div class="auth-sub">请输入访问密码</div>
+    <input type="password" id="auth-input" class="auth-input"
+           placeholder="请输入密码"
+           onkeydown="if(event.key==='Enter')submitAuth()">
+    <div id="auth-error" class="auth-error">密码错误，请重试</div>
+    <button class="auth-btn" onclick="submitAuth()">进 入</button>
+  </div>
+</div>
 
 <!-- ─── Header ──────────────────────────────────────────────── -->
 <header>
@@ -1096,7 +1124,40 @@ async function loadAll(){
   rfTimer=setTimeout(loadAll,60000);
 }
 
-loadAll();
+// ─── Auth gate ─────────────────────────────────────────────────
+const _AK='_ca_v1', _DAYS=7;
+
+function _authOk(){
+  try{
+    const t=parseInt(localStorage.getItem(_AK)||'0',10);
+    return t>0&&Date.now()<t+_DAYS*864e5;
+  }catch{return false;}
+}
+
+function submitAuth(){
+  const inp=document.getElementById('auth-input');
+  const err=document.getElementById('auth-error');
+  if(inp.value==='erica1980'){
+    try{localStorage.setItem(_AK,String(Date.now()));}catch{}
+    document.getElementById('auth-gate').style.display='none';
+    loadAll();
+  }else{
+    err.style.display='block';
+    inp.value='';
+    inp.style.animation='none';
+    inp.offsetHeight; // reflow
+    inp.style.animation='authShake .35s ease';
+    inp.focus();
+  }
+}
+
+if(_authOk()){
+  loadAll();
+}else{
+  const gate=document.getElementById('auth-gate');
+  gate.style.display='flex';
+  setTimeout(()=>document.getElementById('auth-input').focus(),80);
+}
 </script>
 </body>
 </html>
