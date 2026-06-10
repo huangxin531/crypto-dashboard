@@ -1727,7 +1727,7 @@ async function translateAllTitles() {
     await Promise.all(links.slice(i, i + BATCH).map(async el => {
       const orig = el.dataset.orig;
       const zh = await gtrans(orig);
-      el.dataset.zh = zh;
+      if (zh !== orig) el.dataset.zh = zh;  // 翻译失败时不标记，留给下次自动重试
       if (_txOn) el.textContent = zh;
       done++;
     }));
@@ -1909,6 +1909,7 @@ async function loadAll(){
       updateHeatTable();
       updateFeedHealth(rss);
       translateAllTitles();   // 自动翻译所有新闻标题
+      setTimeout(translateAllTitles, 5000);  // 5秒后重试翻译失败的条目，无需手动点击
     } else {
       const err = rssRes.reason?.message || '超时';
       const msg = `<div style="color:var(--orange);font-size:.8rem">RSS 加载失败：${err}</div>`;
