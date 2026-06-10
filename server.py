@@ -1088,6 +1088,40 @@ def api_fred():
 def api_macro():
     return jsonify(collect_macro_yahoo())
 
+# ── 通用代理端点（前端某些外部 API 在 Railway 等云环境会被墙/限制，
+#    例如 Binance 451、DefiLlama CORS，这里由后端转发）──────────
+_PROXY_ALLOWED_HOSTS = {
+    'api.binance.com', 'fapi.binance.com',
+    'api.llama.fi', 'stablecoins.llama.fi',
+    'api.coingecko.com', 'api.coincap.io',
+    'api.alternative.me', 'api.bybit.com',
+    'api.coinbase.com', 'api.frankfurter.app',
+}
+
+@app.route('/api/proxy')
+def api_proxy():
+    url = request.args.get('url', '')
+    if not url:
+        return jsonify({'error': 'missing url param'}), 400
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != 'https' or parsed.hostname not in _PROXY_ALLOWED_HOSTS:
+        return jsonify({'error': f'host not allowed: {parsed.hostname}'}), 403
+
+    cache_key = 'proxy_' + url
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return jsonify(cached)
+
+    try:
+        r = _S.get(url, timeout=12)
+        r.raise_for_status()
+        data = r.json()
+    except Exception as e:
+        return jsonify({'error': str(e)}), 502
+
+    cache_set(cache_key, data, 20)
+    return jsonify(data)
+
 @app.route('/api/debug_llama')
 def api_debug_llama():
     """诊断端点：返回 DefiLlama 实际链名 / 稳定币链名 / DEX 测试结果"""
