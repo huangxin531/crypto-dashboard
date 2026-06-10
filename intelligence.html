@@ -536,6 +536,25 @@ const COIN_LIST = [
 // 优先分析的币种（紫色高亮按钮）
 const PRIORITY = new Set(['WLD','SOL','PENGU','MON','XPL']);
 
+// 币种快照行情数据源：浏览器直接请求 Binance/OKX K 线
+// （服务器端在 Railway 上请求 Binance 会被 451 拒绝，浏览器出口 IP 通常不受限）
+const COIN_SYMBOLS = {
+  BTC:   {binance:'BTCUSDT'},
+  ETH:   {binance:'ETHUSDT'},
+  SOL:   {binance:'SOLUSDT'},
+  WLD:   {binance:'WLDUSDT'},
+  ORDI:  {binance:'ORDIUSDT'},
+  PYTH:  {binance:'PYTHUSDT'},
+  PENGU: {binance:'PENGUUSDT'},
+  ENA:   {binance:'ENAUSDT'},
+  ONDO:  {binance:'ONDOUSDT'},
+  LINK:  {binance:'LINKUSDT'},
+  W:     {binance:'WUSDT'},
+  JUP:   {binance:'JUPUSDT'},
+  MON:   {okx:'MON-USDT'},
+  XPL:   {okx:'XPL-USDT'},
+};
+
 // 每个币的本地关键词提示（辅助过滤相关关键词）
 const COIN_KW = {
   WLD:   ['worldcoin','world','openai','identity','orb','altman','tools','humanity'],
@@ -1822,6 +1841,126 @@ function fetchJ(url, ms=12000){
     .then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); });
 }
 
+// ─── 币种快照：客户端技术指标计算（与 server.py 的 analyse() 保持一致）──
+function _sma(arr, p){
+  return arr.map((_,i) => i>=p-1 ? arr.slice(i-p+1, i+1).reduce((a,b)=>a+b, 0)/p : null);
+}
+function _ema(arr, p){
+  const k = 2/(p+1), r=[arr[0]];
+  for(let i=1;i<arr.length;i++) r.push(arr[i]*k + r[i-1]*(1-k));
+  return r;
+}
+function _rsi(closes, p=14){
+  const n=closes.length, res=new Array(n).fill(null);
+  if(n < p+1) return res;
+  let ag=0, al=0;
+  for(let i=1;i<=p;i++){
+    const d=closes[i]-closes[i-1];
+    if(d>0) ag+=d; else al-=d;
+  }
+  ag/=p; al/=p;
+  for(let i=p;i<n;i++){
+    if(i>p){
+      const d=closes[i]-closes[i-1];
+      ag=(ag*(p-1) + (d>0?d:0))/p;
+      al=(al*(p-1) + (d<0?-d:0))/p;
+    }
+    res[i] = al===0 ? 100 : 100 - 100/(1+ag/al);
+  }
+  return res;
+}
+function _macd(closes){
+  const e12=_ema(closes,12), e26=_ema(closes,26);
+  const dif=closes.map((_,i)=>e12[i]-e26[i]);
+  return [dif, _ema(dif,9)];
+}
+
+// 输出结构与 server.py 的 analyse() 一致，供 renderCard() 直接使用
+function analyseKlines(klines){
+  const closes=klines.map(k=>+k[4]);
+  const vols  =klines.map(k=>+k[5]);
+  const opens =klines.map(k=>+k[1]);
+  const n=closes.length, L=n-1;
+
+  const ma5=_sma(closes,5)[L], ma20=_sma(closes,20)[L], ma60=_sma(closes,60)[L];
+  const ma120 = n>=120 ? _sma(closes,120)[L] : null;
+
+  let ms;
+  if(ma120!=null && ma5>ma20 && ma20>ma60 && ma60>ma120) ms='强势多头';
+  else if(ma5!=null && ma20!=null && ma60!=null && ma5>ma20 && ma20>ma60) ms='多头排列';
+  else if(ma120!=null && ma5<ma20 && ma20<ma60 && ma60<ma120) ms='强势空头';
+  else if(ma5!=null && ma20!=null && ma60!=null && ma5<ma20 && ma20<ma60) ms='空头排列';
+  else ms='交叉整理';
+
+  const rsi = _rsi(closes)[L] || 50.0;
+  const rd = rsi>70?'超买' : rsi<30?'超卖' : rsi<40?'偏低' : rsi>60?'偏高' : '中性';
+
+  const [dif, dea] = _macd(closes);
+  const golden = dif.length>1 && dif[L-1]<dea[L-1] && dif[L]>=dea[L];
+  const death  = dif.length>1 && dif[L-1]>dea[L-1] && dif[L]<=dea[L];
+  const md = golden?'金叉' : death?'死叉' : (dif[L]>0?'多头':'空头');
+
+  const vm = _sma(vols,20)[L] || 1.0;
+  const vr = vols[L]/vm;
+  const vd = vr>2.5 ? `放量${closes[L]>opens[L]?'涨':'跌'} ${vr.toFixed(1)}x` : `量能正常 ${vr.toFixed(1)}x`;
+
+  let score=0;
+  score += ms==='强势多头' ? 2 : ms.includes('多头') ? 1 : 0;
+  score -= ms==='强势空头' ? 2 : ms.includes('空头') ? 1 : 0;
+  score += golden ? 1 : death ? -1 : 0;
+  score += rsi<40 ? 1 : rsi>70 ? -1 : 0;
+  score += vd.startsWith('放量涨') ? 1 : vd.startsWith('放量跌') ? -1 : 0;
+
+  const chg24 = closes[L-1] ? (closes[L]-closes[L-1])/closes[L-1]*100 : 0.0;
+
+  return {
+    price: closes[L], chg24: +chg24.toFixed(4), score,
+    ma:   {ma5, ma20, ma60, ma120, signal: ms},
+    rsi:  {value: +rsi.toFixed(2), desc: `${rd} ${rsi.toFixed(1)}`},
+    macd: {dif: +dif[L].toFixed(6), dea: +dea[L].toFixed(6), desc: md},
+    vol:  {ratio: +vr.toFixed(2), desc: vd},
+  };
+}
+
+async function fetchKlines(ticker){
+  const sym = COIN_SYMBOLS[ticker];
+  if(!sym) throw new Error('无数据源');
+
+  if(sym.binance){
+    const r = await fetch(
+      `https://api.binance.com/api/v3/klines?symbol=${sym.binance}&interval=1d&limit=200`,
+      {signal: AbortSignal.timeout(10000)});
+    if(!r.ok) throw new Error('Binance HTTP '+r.status);
+    const d = await r.json();
+    if(!Array.isArray(d) || d.length<30) throw new Error('K线数据不足');
+    return d;
+  }
+
+  const r = await fetch(
+    `https://www.okx.com/api/v5/market/candles?instId=${sym.okx}&bar=1D&limit=200`,
+    {signal: AbortSignal.timeout(10000)});
+  if(!r.ok) throw new Error('OKX HTTP '+r.status);
+  const j = await r.json();
+  if(j.code!=='0' || !j.data?.length) throw new Error('OKX: '+(j.msg||j.code));
+  const data = j.data.slice().reverse(); // OKX 返回最新在前，需反转
+  if(data.length<30) throw new Error('K线数据不足');
+  return data;
+}
+
+// 返回结构与原 /api/prices 一致：{TICKER: {ok:true,...} | {ok:false, error}}
+async function fetchCoinPrices(tickers){
+  const result = {};
+  await Promise.all(tickers.map(async t => {
+    try{
+      const klines = await fetchKlines(t);
+      result[t] = {ok:true, ...analyseKlines(klines)};
+    }catch(e){
+      result[t] = {ok:false, error: e.message || String(e)};
+    }
+  }));
+  return result;
+}
+
 // 将 DOM 标记为超时状态
 function markTimeout(ids){
   ids.forEach(id=>{
@@ -1858,8 +1997,9 @@ async function loadAll(){
 
   try {
     // ── 快速通道：价格 + 市场数据（各自 12s 超时，真正并行）──
+    // 价格 K 线改为浏览器直接请求 Binance/OKX，避免服务器端 IP 被 Binance 451 拒绝
     const [priceRes, marketRes] = await Promise.allSettled([
-      fetchJ(`${API}/api/prices`, 14000),
+      fetchCoinPrices(COIN_LIST.map(c=>c.t)),
       fetchJ(`${API}/api/market`, 12000),
     ]);
 
