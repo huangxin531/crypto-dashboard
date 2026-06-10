@@ -1,0 +1,2139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 加密情报中心</title>
+<style>
+:root{
+  --bg:#0d1117;--s1:#161b22;--s2:#21262d;--bd:#30363d;
+  --text:#e6edf3;--muted:#8b949e;
+  --green:#3fb950;--red:#f85149;--blue:#58a6ff;--purple:#bc8cff;--orange:#e3b341;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',-apple-system,system-ui,sans-serif;min-height:100vh}
+
+/* ── 导航 ── */
+.topbar{background:var(--s1);border-bottom:1px solid var(--bd);padding:0 20px;
+        display:flex;align-items:center;height:46px;position:sticky;top:0;z-index:100;gap:0}
+.logo{font-size:.9rem;font-weight:700;background:linear-gradient(135deg,#58a6ff,#bc8cff);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+      margin-right:16px;white-space:nowrap}
+.nav-a{color:var(--muted);text-decoration:none;font-size:.8rem;padding:5px 11px;
+       border-radius:5px;transition:background .15s,color .15s}
+.nav-a:hover{background:var(--s2);color:var(--text)}
+.nav-a.on{background:var(--s2);color:var(--blue)}
+.topbar-r{margin-left:auto;display:flex;align-items:center;gap:8px}
+.srv-pill{display:flex;align-items:center;gap:5px;font-size:.7rem;color:var(--muted);
+          background:var(--s2);border:1px solid var(--bd);border-radius:20px;padding:3px 9px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--muted)}
+.dot.g{background:var(--green)} .dot.r{background:var(--red)}
+.btn-refresh{background:var(--s2);border:1px solid var(--bd);color:var(--blue);
+             padding:4px 12px;border-radius:5px;cursor:pointer;font-size:.78rem;transition:background .15s}
+.btn-refresh:hover{background:var(--bd)}
+.btn-refresh:disabled{opacity:.45;cursor:default}
+
+/* ── 离线 ── */
+#offline{display:none;background:rgba(248,81,73,.07);border:1px solid rgba(248,81,73,.28);
+         border-radius:9px;padding:12px 16px;margin:14px 20px 0;font-size:.83rem;
+         color:var(--red);line-height:1.8}
+#offline code{background:var(--s2);color:var(--blue);padding:1px 5px;border-radius:4px;font-family:Consolas,monospace}
+
+/* ── 主容器 ── */
+.main{max-width:1440px;margin:0 auto;padding:18px 20px}
+.sec{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;
+     color:var(--text);margin-bottom:9px;display:flex;align-items:center;gap:7px}
+.sec::after{content:'';flex:1;height:1px;background:var(--bd)}
+
+/* ── 市场脉搏 ── */
+.pulse{display:flex;flex-wrap:wrap;align-items:center;gap:0;
+       background:var(--s1);border:1px solid var(--bd);border-radius:9px;
+       padding:12px 18px;margin-bottom:18px}
+.p-item{display:flex;flex-direction:column;gap:2px;padding:0 16px;min-width:100px}
+.p-item:not(:last-child){border-right:1px solid var(--bd)}
+.p-lbl{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text)}
+.p-val{font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.p-sub{font-size:.68rem;color:var(--muted)}
+.up{color:var(--green)} .dn{color:var(--red)} .neu{color:var(--muted)}
+.trending-row{display:flex;flex-wrap:wrap;gap:5px;margin-left:auto;align-items:center;padding-left:12px}
+.t-chip{display:flex;align-items:center;gap:3px;background:var(--s2);
+        border:1px solid var(--bd);border-radius:20px;padding:3px 9px;font-size:.72rem}
+.t-chip .sym{font-weight:700;color:var(--blue)}
+.t-chip .chg.up{color:var(--green)} .t-chip .chg.dn{color:var(--red)}
+
+/* ── 情报摘要行（币种热度 + 关键词） ── */
+.intel-summary{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+.summary-panel{background:var(--s1);border:1px solid var(--bd);border-radius:9px;padding:14px 16px}
+.sp-title{font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+
+/* 币种热度 */
+.mention-list{display:flex;flex-wrap:wrap;gap:6px}
+.m-tag{display:flex;align-items:center;gap:4px;border-radius:6px;padding:4px 10px;font-size:.78rem;cursor:default}
+.m-tag .m-tk{font-weight:800}
+.m-tag .m-cnt{font-size:.68rem;opacity:.75}
+
+/* 关键词云 */
+.kw-list{display:flex;flex-wrap:wrap;gap:5px;align-items:baseline}
+.kw{background:var(--s2);border:1px solid var(--bd);border-radius:4px;
+    padding:3px 8px;color:var(--text);cursor:default;transition:color .15s}
+.kw:hover{color:var(--blue)}
+
+/* ── 双栏布局 ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+@media(max-width:820px){.two-col,.intel-summary{grid-template-columns:1fr}}
+
+.panel{background:var(--s1);border:1px solid var(--bd);border-radius:9px;padding:16px 18px;overflow:hidden}
+.pt{font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.psrc{font-size:.65rem;color:var(--muted);margin-left:auto;font-weight:400}
+
+/* ── 新闻列表 ── */
+.n-item{padding:9px 0;border-bottom:1px solid var(--s2);font-size:.8rem;line-height:1.5}
+.n-item:last-child{border-bottom:none;padding-bottom:0}
+.n-title a{color:var(--text);text-decoration:none}
+.n-title a:hover{color:var(--blue)}
+.n-meta{font-size:.67rem;color:var(--muted);margin-top:3px;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.coin-tag{font-size:.6rem;font-weight:700;background:rgba(63,185,80,.1);color:var(--green);
+          padding:1px 5px;border-radius:3px}
+
+/* ── 项目追踪 ── */
+.topic-block{margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--s2)}
+.topic-block:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.topic-lbl{font-size:.72rem;font-weight:700;color:var(--blue);margin-bottom:7px;
+           display:flex;align-items:center;gap:5px}
+.topic-coins span{font-size:.58rem;font-weight:700;background:rgba(88,166,255,.1);
+                  color:var(--blue);padding:1px 5px;border-radius:3px}
+.t-item{font-size:.78rem;padding:4px 0;border-bottom:1px solid var(--s2);line-height:1.4;color:var(--muted)}
+.t-item:last-child{border-bottom:none}
+.t-item a{color:var(--text);text-decoration:none}
+.t-item a:hover{color:var(--blue)}
+.t-src{font-size:.65rem;color:var(--muted);margin-left:4px}
+
+/* ── 事件 ── */
+.ev-item{display:flex;gap:9px;padding:9px 0;border-bottom:1px solid var(--s2);font-size:.8rem}
+.ev-item:last-child{border-bottom:none;padding-bottom:0}
+.ev-date{font-size:.67rem;font-weight:700;color:var(--orange);min-width:40px;padding-top:1px;white-space:nowrap}
+.ev-title{flex:1;line-height:1.4}
+.ev-meta{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+.ev-coin{font-size:.6rem;font-weight:700;background:rgba(88,166,255,.1);color:var(--blue);padding:1px 5px;border-radius:3px}
+.ev-cat{font-size:.6rem;color:var(--muted);background:var(--s2);padding:1px 5px;border-radius:3px}
+.no-key{color:var(--muted);font-size:.8rem;line-height:1.7}
+.no-key a{color:var(--blue)}
+.no-key code{background:var(--s2);color:var(--orange);padding:1px 5px;border-radius:4px;font-family:Consolas,monospace}
+
+/* ── TVL ── */
+.tvl-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--s2);font-size:.8rem}
+.tvl-item:last-child{border-bottom:none;padding-bottom:0}
+.tvl-nm{font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tvl-cat{font-size:.62rem;color:var(--muted);margin-left:3px}
+.tvl-v{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.75rem;min-width:65px;text-align:right}
+.tvl-c{font-weight:700;font-size:.8rem;min-width:52px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* ── 币种网格 ── */
+.coins-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:11px}
+.coin-card{background:var(--s1);border:1px solid var(--bd);border-radius:9px;overflow:hidden;
+           transition:border-color .2s,transform .15s}
+.coin-card:hover{border-color:#58a6ff44;transform:translateY(-1px)}
+.coin-card.bull{border-color:rgba(63,185,80,.3)}
+.coin-card.bear{border-color:rgba(248,81,73,.3)}
+.c-head{display:flex;align-items:center;justify-content:space-between;padding:13px 14px 9px}
+.c-av{width:34px;height:34px;border-radius:50%;background:rgba(88,166,255,.1);color:var(--blue);
+      display:flex;align-items:center;justify-content:center;font-size:.67rem;font-weight:800;flex-shrink:0}
+.c-tk{font-weight:700;font-size:.9rem}
+.c-nm{font-size:.65rem;color:var(--muted);margin-top:1px}
+.c-pr{font-size:1.1rem;font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.c-ch{font-size:.75rem;font-weight:700;text-align:right;margin-top:1px}
+.c-inds{display:flex;gap:4px;flex-wrap:wrap;padding:0 14px 9px}
+.chip{font-size:.62rem;font-weight:700;padding:2px 6px;border-radius:3px;white-space:nowrap}
+.chip.bull{background:rgba(63,185,80,.12);color:var(--green)}
+.chip.bear{background:rgba(248,81,73,.12);color:var(--red)}
+.chip.neu{background:rgba(139,148,158,.08);color:var(--muted)}
+.c-foot{display:flex;align-items:center;justify-content:space-between;
+        padding:7px 14px 11px;border-top:1px solid var(--bd);margin-top:1px}
+.c-sc{font-size:.72rem;color:var(--muted)}
+.c-sc .sv{font-weight:700;margin-left:2px}
+.c-snip{padding:0 14px 11px;font-size:.72rem;color:var(--muted);line-height:1.55;
+        border-top:1px solid var(--s2);padding-top:7px;margin-top:2px}
+.c-snip a{color:var(--muted);text-decoration:none}
+.c-snip a:hover{color:var(--blue)}
+
+/* ── AI 分析按钮 ── */
+.ai-btn{background:var(--s2);border:1px solid var(--bd);color:var(--muted);
+        padding:4px 10px;border-radius:5px;cursor:pointer;font-size:.72rem;
+        font-weight:600;transition:all .15s;display:flex;align-items:center;gap:4px}
+.ai-btn:hover{border-color:var(--purple);color:var(--purple)}
+.ai-btn:disabled{opacity:.4;cursor:default}
+.ai-btn.pri{border-color:rgba(188,140,255,.35);color:var(--purple);
+            background:rgba(188,140,255,.06)}
+.ai-btn.pri:hover{background:rgba(188,140,255,.14)}
+.ai-btn.done{border-color:rgba(63,185,80,.35);color:var(--green);
+             background:rgba(63,185,80,.06)}
+
+/* ── AI 分析展示区 ── */
+.ai-section{display:none;border-top:1px solid var(--bd);
+            background:rgba(88,166,255,.03);padding:14px 15px 15px}
+.ai-section.show{display:block}
+
+.ai-loading{display:flex;align-items:center;gap:9px;
+            color:var(--muted);font-size:.8rem;padding:6px 0}
+.spin{width:16px;height:16px;border:2px solid var(--bd);
+      border-top-color:var(--purple);border-radius:50%;
+      animation:rot .7s linear infinite;flex-shrink:0}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+.ai-out{font-size:.8rem;line-height:1.85;color:var(--text)}
+.ai-head{font-weight:800;color:var(--blue);font-size:.85rem;
+         margin-bottom:6px;display:block}
+.ai-s{color:var(--purple);font-weight:700}
+.ai-bullet{color:var(--blue);margin-right:2px}
+.ai-tag-watch {color:var(--muted)}
+.ai-tag-buy   {color:var(--green);font-weight:700}
+.ai-tag-sell  {color:var(--orange);font-weight:700}
+.ai-tag-risk  {color:var(--red);font-weight:700}
+.ai-ts{font-size:.65rem;color:var(--muted);margin-top:9px;
+       text-align:right;border-top:1px solid var(--s2);padding-top:6px}
+.ai-err{color:var(--red);font-size:.78rem;padding:4px 0}
+
+/* 骨架 */
+.skel{background:linear-gradient(90deg,var(--s2) 25%,#2d333b 50%,var(--s2) 75%);
+      background-size:200% 100%;animation:sh 1.4s ease-in-out infinite;border-radius:4px}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* 状态行 */
+.srow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+      font-size:.72rem;color:var(--text);font-weight:600;margin-bottom:14px;padding:0 2px}
+.ts{margin-left:auto;font-size:.7rem;color:var(--muted);font-weight:400}
+
+/* ── 今日主线叙事 ── */
+.narrative-bar{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.narr-btn{background:linear-gradient(135deg,rgba(88,166,255,.12),rgba(188,140,255,.12));
+          border:1px solid rgba(188,140,255,.35);color:var(--purple);padding:6px 16px;
+          border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:700;white-space:nowrap;
+          transition:all .15s}
+.narr-btn:hover{background:linear-gradient(135deg,rgba(88,166,255,.22),rgba(188,140,255,.22))}
+.narr-btn:disabled{opacity:.45;cursor:default}
+.narr-hint{font-size:.72rem;color:var(--muted)}
+.narrative-panel{background:var(--s1);border:1px solid var(--bd);border-radius:9px;
+                 padding:16px 18px;margin-bottom:18px;min-height:0}
+.narrative-panel:empty{display:none}
+
+/* ── 一键分析进度 ── */
+.sec .batch-btn{margin-left:auto;background:var(--s2);border:1px solid var(--bd);
+                color:var(--muted);padding:3px 10px;border-radius:5px;cursor:pointer;
+                font-size:.72rem;font-weight:600;transition:all .15s}
+.sec .batch-btn:hover{border-color:var(--orange);color:var(--orange)}
+.sec .batch-btn:disabled{opacity:.4;cursor:default}
+.batch-progress{background:var(--s1);border:1px solid var(--bd);border-radius:8px;
+                padding:10px 14px;margin-bottom:12px}
+.batch-bar-wrap{background:var(--s2);border-radius:4px;height:4px;margin-bottom:8px;overflow:hidden}
+.batch-bar-fill{height:4px;background:linear-gradient(90deg,var(--blue),var(--purple));
+                border-radius:4px;width:0%;transition:width .3s}
+.batch-log{font-size:.72rem;color:var(--muted);line-height:1.8;word-break:break-all}
+
+/* ── 叙事热度矩阵 ── */
+.heat-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.heat-table th{padding:7px 10px;text-align:left;color:var(--muted);font-weight:600;
+               font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;
+               border-bottom:1px solid var(--bd);white-space:nowrap}
+.heat-table td{padding:7px 10px;border-bottom:1px solid var(--s2)}
+.heat-table tbody tr:last-child td{border-bottom:none}
+.heat-table td:not(:first-child){text-align:center;font-weight:700;font-size:.8rem;min-width:58px}
+
+/* ── 加载中行 ── */
+.loading-line{color:var(--muted);font-size:.8rem;display:flex;align-items:center;gap:8px}
+.loading-line::after{content:'';width:12px;height:12px;border:2px solid var(--bd);
+                     border-top-color:var(--blue);border-radius:50%;
+                     animation:rot .7s linear infinite;display:inline-block}
+
+/* ── 翻译切换 ── */
+.tx-toggle{background:var(--s2);border:1px solid var(--bd);color:var(--muted);
+           padding:2px 8px;border-radius:4px;cursor:pointer;font-size:.68rem;
+           font-weight:600;transition:all .15s;white-space:nowrap}
+.tx-toggle.on{border-color:rgba(88,166,255,.45);color:var(--blue);background:rgba(88,166,255,.07)}
+.tx-status{font-size:.63rem;color:var(--muted);margin-left:4px}
+
+@media(max-width:600px){
+  .main{padding:10px}
+  .pulse{gap:10px}
+  .p-item{border-right:none;padding:3px 0}
+}
+
+/* ── TVL 资金结构监控 ── */
+.tvl-inner-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.tvl-col-hd{font-size:.62rem;font-weight:700;text-transform:uppercase;
+            letter-spacing:.08em;margin-bottom:7px;display:flex;align-items:center;gap:5px}
+.tvl-stat-box{display:flex;align-items:center;justify-content:space-between;
+              margin-bottom:10px;padding:9px 12px;background:var(--s2);border-radius:7px}
+.tvl-stat-chgs{display:flex;gap:8px}
+.tvl-chg-sm{font-size:.68rem;font-weight:700}
+.tvl-th-row{display:flex;gap:4px;font-size:.58rem;font-weight:700;color:var(--muted);
+            text-transform:uppercase;letter-spacing:.05em;
+            padding-bottom:5px;border-bottom:1px solid var(--bd);margin-bottom:3px}
+.tvl-no-data{color:var(--muted);font-size:.8rem;padding:4px 0}
+
+/* ── 强弱颜色逻辑 ── */
+.s-up2{color:#39d353;font-weight:800}
+.s-up1{color:var(--green)}
+.s-neu{color:var(--muted)}
+.s-dn1{color:var(--orange)}
+.s-dn2{color:var(--red);font-weight:800}
+
+/* ── 今日市场风格快照（完整面板）── */
+.ms-group-hd{font-size:.6rem;font-weight:700;text-transform:uppercase;
+             letter-spacing:.1em;color:var(--muted);
+             margin:14px 0 6px;padding-bottom:5px;border-bottom:1px solid var(--s2)}
+.ms-group-hd:first-child{margin-top:0}
+.ms-card{display:flex;align-items:center;gap:9px;padding:9px 13px;border-radius:8px;
+         margin-bottom:5px;border-left:3px solid transparent;cursor:default;
+         transition:filter .15s}
+.ms-card:last-child{margin-bottom:0}
+.ms-card:hover{filter:brightness(1.15)}
+.ms-ico{font-size:1.05rem;flex-shrink:0;width:22px;text-align:center}
+.ms-nm{font-weight:700;font-size:.9rem;flex:1;white-space:nowrap}
+.ms-badge{font-size:.7rem;font-weight:800;padding:2px 8px;border-radius:4px;
+          flex-shrink:0;white-space:nowrap}
+.ms-why{font-size:.63rem;color:var(--muted);text-align:right;line-height:1.4;flex-shrink:0;max-width:150px}
+/* colour variants — Bloomberg/Nansen 风格拉开层级 */
+.g-strong{background:rgba(57,211,83,.16);border-color:#39d353}
+.g-strong .ms-badge{background:rgba(57,211,83,.25);color:#39d353}
+.g-up    {background:rgba(63,185,80,.08);border-color:#3fb950}
+.g-up     .ms-badge{background:rgba(63,185,80,.15);color:#3fb950}
+/* 中性：冷灰蓝，与强弱明显区分 */
+.g-neu   {background:rgba(86,103,137,.07);border-color:#6473a8}
+.g-neu    .ms-badge{background:rgba(86,103,137,.14);color:#8898bb}
+/* 偏弱：橙红 — 比黄色更有警示感 */
+.g-dn    {background:rgba(210,80,40,.09);border-color:#d2501e}
+.g-dn     .ms-badge{background:rgba(210,80,40,.18);color:#e06832}
+/* 弱势：纯红，醒目 */
+.g-weak  {background:rgba(248,81,73,.13);border-color:#f85149}
+.g-weak   .ms-badge{background:rgba(248,81,73,.22);color:#f85149}
+/* compact events appended below market style */
+.ms-events-hd{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+              color:var(--blue);margin-top:14px;margin-bottom:6px;padding-top:10px;
+              border-top:1px solid var(--bd)}
+
+/* ── 市场风格小徽章（旧 style-bar，保留兼容性）── */
+.style-badge-sm{font-weight:800;font-size:.75rem;padding:2px 7px;border-radius:4px}
+.style-strong{background:rgba(57,211,83,.2);color:#39d353}
+.style-up    {background:rgba(63,185,80,.12);color:var(--green)}
+.style-neu   {background:rgba(139,148,158,.1);color:var(--muted)}
+.style-dn    {background:rgba(227,179,65,.12);color:var(--orange)}
+.style-weak  {background:rgba(248,81,73,.15);color:var(--red)}
+
+@media(max-width:600px){
+  .tvl-inner-grid{grid-template-columns:1fr}
+  .style-bar{gap:4px}
+}
+
+/* ── 宏观指标 / 流动性监控 ── */
+.macro-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:12px}
+.macro-card{background:var(--s2);border:1px solid var(--bd);border-radius:8px;
+            padding:9px 12px;display:flex;flex-direction:column;gap:3px}
+.macro-lbl{font-size:.62rem;font-weight:700;text-transform:uppercase;
+           letter-spacing:.06em;color:var(--muted)}
+.macro-val{font-size:1.05rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+.macro-chg{font-size:.74rem;font-weight:700;display:flex;align-items:center;gap:3px}
+
+.risk-banner{margin-top:4px;padding:10px 14px;border-radius:8px;font-size:.82rem;
+             font-weight:700;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.risk-on{background:rgba(63,185,80,.12);color:var(--green);border:1px solid rgba(63,185,80,.3)}
+.risk-off{background:rgba(248,81,73,.12);color:var(--red);border:1px solid rgba(248,81,73,.3)}
+.risk-neutral{background:rgba(139,148,158,.1);color:var(--muted);border:1px solid var(--bd)}
+
+/* ── 宏观指标 Risk ON/OFF 状态栏（市场脉搏风格） ── */
+.macro-risk-banner{margin-top:4px;padding:13px 18px;border-radius:9px;
+                   background:var(--s1);border:1px solid var(--bd);
+                   border-left:4px solid var(--bd);
+                   display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.macro-risk-banner .mrisk-label{color:var(--text);font-size:1.05rem;font-weight:800;letter-spacing:.02em}
+.macro-risk-banner .mrisk-reason{color:var(--muted);font-size:.78rem;font-weight:400}
+.mrisk-on{border-left-color:var(--green)}
+.mrisk-off{border-left-color:var(--red)}
+.mrisk-neutral{border-left-color:var(--orange)}
+
+.liq-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:4px}
+.liq-stat-row{display:flex;justify-content:space-between;align-items:center;
+              gap:10px;padding:8px 0;border-bottom:1px solid var(--s2);font-size:.78rem}
+.liq-stat-row:last-child{border-bottom:none}
+.liq-pending{color:var(--muted);font-style:italic;font-size:.75rem}
+@media(max-width:600px){
+  .liq-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">🤖 AI 情报</div>
+  <a class="nav-a" href="index.html">📊 价格</a>
+  <a class="nav-a" href="analysis.html">🔬 技术</a>
+  <a class="nav-a on" href="intelligence.html">🤖 情报</a>
+  <div class="topbar-r">
+    <div class="srv-pill"><div class="dot" id="srv-dot"></div><span id="srv-lbl">连接中</span></div>
+    <button class="btn-refresh" id="btn-ref" onclick="loadAll()">↻ 刷新</button>
+  </div>
+</div>
+
+<div id="offline">
+  ⚠️ 无法连接本地服务器（端口 8888）。<br>
+  双击 <code>start_server.bat</code> 启动服务器，然后刷新页面。<br>
+  或运行：<code>python server.py</code>
+</div>
+
+<div class="main">
+
+  <!-- 状态行 -->
+  <div class="srow" id="srow" style="display:none">
+    <span>媒体 RSS：<strong id="cfg-rss" style="color:var(--green)">加载中</strong></span>
+    <span>Google News 主题：<strong style="color:var(--green)">8 个</strong></span>
+    <span>DefiLlama：<strong style="color:var(--green)">✅ 免费</strong></span>
+    <span>CoinMarketCal：<strong id="cfg-cmc">—</strong></span>
+    <div class="ts" id="ts"></div>
+  </div>
+
+  <!-- ① 市场脉搏 -->
+  <div class="sec">市场脉搏</div>
+  <div class="pulse" id="pulse">
+    <div class="p-item"><div class="p-lbl">加载中</div>
+      <div class="skel" style="height:20px;width:80px;margin-top:3px"></div></div>
+  </div>
+
+  <!-- 🌐 宏观指标 -->
+  <div class="sec" style="margin-top:14px">🌐 宏观指标</div>
+  <div class="panel" id="macro-panel" style="margin-bottom:14px">
+    <div class="loading-line">加载中</div>
+  </div>
+
+  <!-- 💧 流动性监控 -->
+  <div class="sec">💧 流动性监控</div>
+  <div class="panel" id="liquidity-panel" style="margin-bottom:14px">
+    <div class="loading-line">加载中</div>
+  </div>
+
+  <!-- ② 情报摘要（币种热度 + 关键词） -->
+  <div class="sec">情报摘要 · 自动分析</div>
+  <div class="intel-summary">
+    <div class="summary-panel">
+      <div class="sp-title">🔥 今日媒体提及热度</div>
+      <div id="coin-mentions"><div class="skel" style="height:60px"></div></div>
+    </div>
+    <div class="summary-panel">
+      <div class="sp-title">🔑 高频关键词</div>
+      <div id="keywords"><div class="skel" style="height:60px"></div></div>
+    </div>
+  </div>
+
+  <!-- ③ 综合新闻 + 项目追踪 -->
+  <div class="two-col">
+    <div>
+      <div class="sec">📰 综合新闻</div>
+      <div class="panel" id="news-panel">
+        <div style="color:var(--muted);font-size:.82rem">加载中…</div>
+      </div>
+    </div>
+    <div>
+      <div class="sec">🎯 项目追踪（Google News）</div>
+      <div class="panel" id="topics-panel">
+        <div style="color:var(--muted);font-size:.82rem">加载中…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ④ 市场风格快照 + TVL 宏观 -->
+  <div class="two-col">
+    <div>
+      <div class="sec">🌡 今日市场风格快照</div>
+      <div class="panel" id="market-style-panel">
+        <div style="color:var(--muted);font-size:.82rem">加载中…</div>
+      </div>
+    </div>
+    <div>
+      <div class="sec">🔗 链上 TVL｜全市场宏观</div>
+      <div class="panel" id="tvl-macro-panel">
+        <div style="color:var(--muted);font-size:.82rem">加载中…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ④b TVL 资金结构监控（Layers 2–5） -->
+  <div class="sec" style="margin-top:14px">⚡ TVL 异动监控｜资金突变雷达</div>
+  <div class="panel" id="tvl-moves-panel" style="margin-bottom:14px">
+    <div style="color:var(--muted);font-size:.82rem">加载中…</div>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="sec">🔭 重点生态资金状态｜Watchlist</div>
+      <div class="panel" id="tvl-watchlist-panel">
+        <div style="color:var(--muted);font-size:.82rem">加载中…</div>
+      </div>
+    </div>
+    <div>
+      <div class="sec">💵 稳定币资金流</div>
+      <div class="panel" id="tvl-stables-panel">
+        <div style="color:var(--muted);font-size:.82rem">加载中…</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" style="margin-top:14px">🔓 未来45天重大解锁｜供应压力监控</div>
+  <div class="panel" id="unlocks-panel" style="margin-bottom:14px">
+    <div style="color:var(--muted);font-size:.82rem">加载中…</div>
+  </div>
+
+  <div class="sec" style="margin-top:14px">🌉 Bridge Flow｜跨链资金迁移监控</div>
+  <div class="panel" id="tvl-bridge-panel" style="margin-bottom:14px">
+    <div style="color:var(--muted);font-size:.82rem">加载中…</div>
+  </div>
+
+  <div class="sec" style="margin-top:14px">🏛 RWA 链上资金｜传统金融上链监控</div>
+  <div class="panel" id="tvl-rwa-panel" style="margin-bottom:14px">
+    <div style="color:var(--muted);font-size:.82rem">加载中…</div>
+  </div>
+
+  <!-- ④c 今日市场主线叙事 -->
+  <div class="sec">🧭 今日市场主线叙事</div>
+  <div class="narrative-bar">
+    <button class="narr-btn" id="narr-btn" onclick="loadMarketNarrative()">🧠 生成今日叙事分析</button>
+    <span class="narr-hint" id="narr-hint">综合 RSS + Google News + 价格异动 → Claude 判断今日市场在交易什么</span>
+  </div>
+  <div class="narrative-panel" id="narrative-panel"></div>
+
+  <!-- ⑤ 币种快照 -->
+  <div class="sec" style="margin-top:6px">
+    币种快照
+    <button class="batch-btn" id="batch-btn" onclick="analyzeAllCoins()" title="顺序分析所有监控币种">
+      ⚡ 一键分析全部
+    </button>
+  </div>
+  <div class="batch-progress" id="batch-progress" style="display:none">
+    <div class="batch-bar-wrap"><div class="batch-bar-fill" id="batch-bar-fill"></div></div>
+    <div class="batch-log" id="batch-log"></div>
+  </div>
+  <div class="coins-grid" id="coins-grid"></div>
+
+  <!-- ⑥ 叙事热度矩阵 -->
+  <div class="sec" style="margin-top:20px">📡 叙事热度矩阵</div>
+  <div class="panel" style="padding:16px 18px">
+    <div id="heat-body"><div style="color:var(--muted);font-size:.8rem">价格数据加载后自动计算</div></div>
+  </div>
+
+</div>
+
+<script>
+const API = 'http://127.0.0.1:8888';
+
+const COIN_LIST = [
+  {t:'BTC',n:'Bitcoin'}, {t:'ETH',n:'Ethereum'},  {t:'SOL',n:'Solana'},
+  {t:'WLD',n:'Worldcoin'},{t:'ORDI',n:'Ordinals'}, {t:'PYTH',n:'Pyth'},
+  {t:'PENGU',n:'Pudgy Penguins'},{t:'ENA',n:'Ethena'},{t:'ONDO',n:'Ondo Finance'},
+  {t:'LINK',n:'Chainlink'},{t:'W',n:'Wormhole'},  {t:'JUP',n:'Jupiter'},
+  {t:'MON',n:'Monad'},   {t:'XPL',n:'Plasma'},
+];
+
+// 优先分析的币种（紫色高亮按钮）
+const PRIORITY = new Set(['WLD','SOL','PENGU','MON','XPL']);
+
+// 每个币的本地关键词提示（辅助过滤相关关键词）
+const COIN_KW = {
+  WLD:   ['worldcoin','world','openai','identity','orb','altman','tools','humanity'],
+  SOL:   ['solana','validator','etf','firedancer'],
+  PENGU: ['pengu','pudgy','penguin','nft','collectible','luca'],
+  MON:   ['monad','evm','parallel','throughput'],
+  XPL:   ['plasma','xpl','layer2'],
+  ENA:   ['ethena','usde','stablecoin'],
+  ONDO:  ['ondo','rwa','tokenization','real','world','asset'],
+  LINK:  ['chainlink','oracle','ccip'],
+  ORDI:  ['ordinals','brc','inscription'],
+  JUP:   ['jupiter','swap','dex','jup'],
+  BTC:   ['bitcoin','halving','etf','sats'],
+  ETH:   ['ethereum','vitalik','staking','etf'],
+  W:     ['wormhole','bridge','interop'],
+  PYTH:  ['pyth','oracle','datafeed'],
+};
+
+// ── 格式化 ────────────────────────────────────────────────────
+function fmtP(p){
+  if(!p||isNaN(p))return'—';p=+p;
+  if(p>=10000)return'$'+p.toLocaleString('en-US',{maximumFractionDigits:0});
+  if(p>=1000) return'$'+p.toFixed(2);
+  if(p>=100)  return'$'+p.toFixed(3);
+  if(p>=1)    return'$'+p.toFixed(4);
+  if(p>=0.01) return'$'+p.toFixed(5);
+  return'$'+p.toFixed(6);
+}
+function fmtL(n){
+  if(!n)return'—';
+  if(n>=1e12)return'$'+(n/1e12).toFixed(2)+'T';
+  if(n>=1e9) return'$'+(n/1e9).toFixed(1)+'B';
+  if(n>=1e6) return'$'+(n/1e6).toFixed(0)+'M';
+  return'$'+n.toFixed(0);
+}
+function fmtC(c,s='%'){
+  if(c===null||c===undefined||isNaN(c))return'—';
+  c=+c; return(c>=0?'+':'')+c.toFixed(2)+s;
+}
+function cc(c){return!c?'neu':+c>=0?'up':'dn'}
+function chipC(t){
+  if(!t)return'neu';
+  if(/多头|金叉|超卖|偏低|放量涨/.test(t))return'bull';
+  if(/空头|死叉|超买|放量跌/.test(t))return'bear';
+  return'neu';
+}
+
+// ── 渲染：市场脉搏 ────────────────────────────────────────────
+function renderPulse(mkt){
+  const g=mkt.global||{}; const fg=mkt.fear_greed||{}; const tr=mkt.trending||[];
+  const fgCol=v=>!v?'var(--muted)':v<25?'var(--red)':v<45?'var(--orange)':
+               v<55?'var(--muted)':v<75?'var(--green)':'#39d353';
+  const c=fgCol(fg.value);
+  const trHtml=tr.map(t=>`<div class="t-chip">
+    <span class="sym">${t.symbol}</span>
+    <span class="chg ${cc(t.change)}">${fmtC(t.change)}</span></div>`).join('');
+  return`
+    <div class="p-item">
+      <div class="p-lbl">总市值</div>
+      <div class="p-val ${cc(g.mcap_change)}">${fmtL(g.total_mcap)}</div>
+      <div class="p-sub ${cc(g.mcap_change)}">${fmtC(g.mcap_change)} 24h</div>
+    </div>
+    <div class="p-item">
+      <div class="p-lbl">BTC 主导</div>
+      <div class="p-val">${g.btc_dom?g.btc_dom.toFixed(1)+'%':'—'}</div>
+      <div class="p-sub">ETH ${g.eth_dom?g.eth_dom.toFixed(1)+'%':'—'}</div>
+    </div>
+    <div class="p-item">
+      <div class="p-lbl">恐惧贪婪</div>
+      <div class="p-val" style="color:${c}">${fg.value??'—'}</div>
+      <div class="p-sub" style="color:${c}">${fg.label||'—'}</div>
+    </div>
+    <div class="p-item">
+      <div class="p-lbl">24h 成交</div>
+      <div class="p-val">${fmtL(g.total_vol_24h)}</div>
+      <div class="p-sub">${g.active_coins?g.active_coins.toLocaleString()+' 币':'—'}</div>
+    </div>
+    <div class="trending-row">
+      <span style="font-size:.62rem;color:var(--muted);margin-right:3px">🔥 趋势</span>
+      ${trHtml||'<span style="color:var(--muted);font-size:.75rem">加载中</span>'}
+    </div>`;
+}
+
+// ── 渲染：宏观指标 + 流动性监控 ──────────────────────────────
+function fmtIdx(n){
+  if(n==null||isNaN(n)) return'—';
+  return(+n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtUsdPx(n,d=2){
+  if(n==null||isNaN(n)) return'—';
+  return'$'+(+n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+}
+function trendArrow(chg){
+  if(chg==null||isNaN(chg)) return{arrow:'→',cls:'neu'};
+  if(chg>0.05) return{arrow:'▲',cls:'up'};
+  if(chg<-0.05) return{arrow:'▼',cls:'dn'};
+  return{arrow:'→',cls:'neu'};
+}
+function macroCard(label, price, chg, fmtFn){
+  const t=trendArrow(chg);
+  return`<div class="macro-card">
+    <div class="macro-lbl">${label}</div>
+    <div class="macro-val">${fmtFn(price)}</div>
+    <div class="macro-chg ${t.cls}">${t.arrow} ${fmtC(chg)}</div>
+  </div>`;
+}
+
+function renderMacro(yahoo, g){
+  yahoo=yahoo||{}; g=g||{};
+  const cards=[
+    macroCard('美元指数 DXY', yahoo['DX-Y.NYB']?.price, yahoo['DX-Y.NYB']?.chg, fmtIdx),
+    macroCard('美债3M (IRX)', yahoo['^IRX']?.price, yahoo['^IRX']?.chg, n=>n==null?'—':(+n).toFixed(2)+'%'),
+    macroCard('美债10Y (TNX)', yahoo['^TNX']?.price, yahoo['^TNX']?.chg, n=>n==null?'—':(+n).toFixed(2)+'%'),
+    macroCard('纳斯达克综合', yahoo['^IXIC']?.price, yahoo['^IXIC']?.chg, fmtIdx),
+    macroCard('标普500', yahoo['^GSPC']?.price, yahoo['^GSPC']?.chg, fmtIdx),
+    macroCard('VIX恐慌指数', yahoo['^VIX']?.price, yahoo['^VIX']?.chg, fmtIdx),
+    macroCard('黄金 (Gold)', yahoo['GC=F']?.price, yahoo['GC=F']?.chg, n=>fmtUsdPx(n,1)),
+    macroCard('原油 WTI', yahoo['CL=F']?.price, yahoo['CL=F']?.chg, n=>fmtUsdPx(n,2)),
+  ];
+
+  const btcDom=g.btc_dom, ethDom=g.eth_dom, totalMcap=g.total_mcap;
+  const total3=(totalMcap!=null && btcDom!=null && ethDom!=null)
+    ? totalMcap*(1-(btcDom+ethDom)/100) : null;
+  cards.push(macroCard('BTC 主导率', btcDom, null, n=>n==null?'—':n.toFixed(1)+'%'));
+  cards.push(macroCard('TOTAL3', total3, null, fmtL));
+
+  // ── Risk ON / Risk OFF 判断 ──
+  let score=0; const reasons=[];
+  const dxyChg=yahoo['DX-Y.NYB']?.chg, tnxChg=yahoo['^TNX']?.chg,
+        ndxChg=yahoo['^IXIC']?.chg, spxChg=yahoo['^GSPC']?.chg, vixChg=yahoo['^VIX']?.chg;
+  if(dxyChg!=null){ if(dxyChg<0){score++;reasons.push('美元走弱');} else if(dxyChg>0){score--;reasons.push('美元走强');} }
+  if(tnxChg!=null){ if(tnxChg<0){score++;reasons.push('美债收益率下行');} else if(tnxChg>0){score--;reasons.push('美债收益率上行');} }
+  if(ndxChg!=null){ if(ndxChg>0){score++;reasons.push('纳指上涨');} else if(ndxChg<0){score--;reasons.push('纳指下跌');} }
+  if(spxChg!=null){ if(spxChg>0){score++;reasons.push('标普上涨');} else if(spxChg<0){score--;reasons.push('标普下跌');} }
+  if(vixChg!=null){ if(vixChg<0){score++;reasons.push('VIX回落');} else if(vixChg>0){score--;reasons.push('VIX走高');} }
+
+  let riskCls='mrisk-neutral', riskLabel='🟡 中性 / 信号混杂';
+  if(score>=2){riskCls='mrisk-on'; riskLabel='🟢 Risk ON · 风险偏好上升';}
+  else if(score<=-2){riskCls='mrisk-off'; riskLabel='🔴 Risk OFF · 避险情绪上升';}
+
+  return`<div class="macro-grid">${cards.join('')}</div>
+  <div class="macro-risk-banner ${riskCls}">
+    <span class="mrisk-label">${riskLabel}</span>
+    <span class="mrisk-reason">${reasons.join(' · ')||'数据不足'}</span>
+  </div>
+  <div style="font-size:.6rem;color:var(--muted);margin-top:8px">
+    数据来源：Yahoo Finance（DXY / 美债 / 股指 / VIX / 商品）· CoinGecko（BTC占比 / TOTAL3）
+  </div>`;
+}
+
+function renderLiquidity(onchain, fred){
+  onchain=onchain||{}; fred=fred||{configured:false};
+  const stables=onchain.stables||[];
+  const usdt=stables.find(s=>s.symbol==='USDT');
+  const usdc=stables.find(s=>s.symbol==='USDC');
+
+  const stableDelta=s=>(s&&s.mcap&&s.change_1d!=null) ? s.mcap*s.change_1d/100 : null;
+  const usdtDelta=stableDelta(usdt), usdcDelta=stableDelta(usdc);
+
+  const fmtDelta=n=>{
+    if(n==null||isNaN(n)) return'—';
+    const sign=n>=0?'+':'-';
+    return sign+fmtL(Math.abs(n)).slice(1);
+  };
+
+  const stableTotalHtml = onchain.stables_total ? `
+    <div class="liq-stat-row">
+      <span>稳定币总市值</span>
+      <span style="font-weight:700">${fmtL(onchain.stables_total)}
+        <span class="${cc(onchain.stables_change_7d)}" style="font-size:.72rem;margin-left:6px">${fmtC(onchain.stables_change_7d)} 7d</span>
+      </span>
+    </div>`:`<div class="liq-stat-row"><span>稳定币总市值</span><span class="liq-pending">加载中…</span></div>`;
+
+  const usdRow=(label,s,delta)=>{
+    if(!s||!s.mcap) return`<div class="liq-stat-row"><span>${label} 24h 增减</span><span class="liq-pending">暂无数据</span></div>`;
+    return`<div class="liq-stat-row">
+      <span>${label} 24h 增减</span>
+      <span class="${cc(delta)}" style="font-weight:700">${fmtDelta(delta)}
+        <span style="color:var(--muted);font-weight:400;font-size:.68rem;margin-left:4px">总量 ${fmtL(s.mcap)}</span>
+      </span>
+    </div>`;
+  };
+
+  const etfHtml=`
+    <div class="liq-stat-row">
+      <span>BTC / ETH ETF 资金流向</span>
+      <a href="https://farside.co.uk/btc/" target="_blank" rel="noopener noreferrer"
+         style="color:var(--blue);font-size:.74rem;font-weight:700;text-decoration:none;
+                background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.25);
+                padding:4px 10px;border-radius:6px;white-space:nowrap">点击查看 farside.co.uk ↗</a>
+    </div>`;
+
+  const fredRow=(label,f)=>{
+    if(fred.configured===false)
+      return`<div class="liq-stat-row"><span>${label}</span><span class="liq-pending">待配置</span></div>`;
+    if(!f||f.error||f.value==null)
+      return`<div class="liq-stat-row"><span>${label}</span><span class="liq-pending">暂无数据</span></div>`;
+    return`<div class="liq-stat-row">
+      <span>${label}<span style="color:var(--muted);font-size:.62rem;margin-left:4px">${f.date||''}</span></span>
+      <span style="font-weight:700">${fmtL(f.value)}
+        <span class="${cc(f.change_pct)}" style="font-size:.72rem;margin-left:6px">${fmtC(f.change_pct)}</span>
+      </span>
+    </div>`;
+  };
+
+  const fredNote = fred.configured===false ? `
+    <div style="font-size:.6rem;color:var(--orange);margin-top:8px;line-height:1.7">
+      ⚠ 美联储资产负债表 / RRP / M2 数据需要 FRED 免费 API Key。
+      在 <code style="background:var(--s2);color:var(--blue);padding:1px 5px;border-radius:4px">.env</code> 中填入
+      <code style="background:var(--s2);color:var(--orange);padding:1px 5px;border-radius:4px">FRED_API_KEY=</code> 后重启 server.py。
+      <a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank" rel="noopener" style="color:var(--blue)">免费申请 ↗</a>
+    </div>`:'';
+
+  // ── 流动性信号判断 ──
+  let liqScore=0; const liqReasons=[];
+  if(onchain.stables_change_7d!=null){
+    if(onchain.stables_change_7d>0.5){liqScore++;liqReasons.push('稳定币7天净增长');}
+    else if(onchain.stables_change_7d<-0.5){liqScore--;liqReasons.push('稳定币7天净流出');}
+  }
+  if(usdtDelta!=null && usdtDelta>0){liqScore+=0.5;liqReasons.push('USDT 24h增发');}
+  else if(usdtDelta!=null && usdtDelta<0){liqScore-=0.5;liqReasons.push('USDT 24h赎回');}
+  if(usdcDelta!=null && usdcDelta>0){liqScore+=0.5;liqReasons.push('USDC 24h增发');}
+  else if(usdcDelta!=null && usdcDelta<0){liqScore-=0.5;liqReasons.push('USDC 24h赎回');}
+  if(fred.walcl?.change_pct!=null){
+    if(fred.walcl.change_pct>0){liqScore++;liqReasons.push('美联储扩表');}
+    else if(fred.walcl.change_pct<0){liqScore--;liqReasons.push('美联储缩表');}
+  }
+  if(fred.rrp?.change_pct!=null){
+    if(fred.rrp.change_pct<0){liqScore++;liqReasons.push('RRP下降(资金回流市场)');}
+    else if(fred.rrp.change_pct>0){liqScore--;liqReasons.push('RRP上升(资金抽离)');}
+  }
+
+  let liqCls='risk-neutral', liqLabel='🟡 流动性中性';
+  if(liqScore>=1){liqCls='risk-on'; liqLabel='🟢 流动性改善 · 资金有望流入Crypto';}
+  else if(liqScore<=-1){liqCls='risk-off'; liqLabel='🔴 流动性收紧 · 警惕资金流出';}
+
+  return`
+  <div class="liq-grid">
+    <div>
+      <div class="tvl-col-hd" style="color:var(--blue)">稳定币流动性 · DefiLlama</div>
+      ${stableTotalHtml}
+      ${usdRow('USDT', usdt, usdtDelta)}
+      ${usdRow('USDC', usdc, usdcDelta)}
+      ${etfHtml}
+    </div>
+    <div>
+      <div class="tvl-col-hd" style="color:var(--purple)">宏观流动性 · FRED</div>
+      ${fredRow('美联储资产负债表 (WALCL)', fred.walcl)}
+      ${fredRow('隔夜逆回购 RRP', fred.rrp)}
+      ${fredRow('美国 M2 (M2SL)', fred.m2)}
+      ${fredNote}
+    </div>
+  </div>
+  <div class="risk-banner ${liqCls}" style="margin-top:14px">
+    <span>${liqLabel}</span>
+    <span style="font-weight:400;font-size:.74rem;opacity:.85">${liqReasons.join(' · ')||'数据不足'}</span>
+  </div>`;
+}
+
+// ── 渲染：币种热度 ────────────────────────────────────────────
+function renderMentions(mentions){
+  if(!mentions||!mentions.length)
+    return'<div style="color:var(--muted);font-size:.8rem">暂无数据（新闻加载后自动更新）</div>';
+  const max=mentions[0][1]||1;
+  const colors=['var(--green)','var(--blue)','var(--orange)','var(--purple)','var(--muted)'];
+  return`<div class="mention-list">${mentions.slice(0,12).map(([tk,cnt],i)=>{
+    const col=i<2?colors[0]:i<4?colors[1]:i<6?colors[2]:i<8?colors[3]:colors[4];
+    const alpha=Math.max(0.12,cnt/max*0.25);
+    return`<div class="m-tag" style="background:rgba(${col.includes('green')?'63,185,80':
+      col.includes('blue')?'88,166,255':col.includes('orange')?'227,179,65':
+      col.includes('purple')?'188,140,255':'139,148,158'},${alpha});color:${col}"
+      title="${tk}：今日被提及 ${cnt} 次">
+      <span class="m-tk">${tk}</span>
+      <span class="m-cnt">×${cnt}</span></div>`;
+  }).join('')}</div>`;
+}
+
+// ── 渲染：关键词 ──────────────────────────────────────────────
+function renderKeywords(kws){
+  if(!kws||!kws.length)
+    return'<div style="color:var(--muted);font-size:.8rem">加载中…</div>';
+  const max=kws[0][1]||1;
+  return`<div class="kw-list">${kws.slice(0,18).map(([w,cnt])=>{
+    const sz=Math.round(10+cnt/max*6);
+    return`<span class="kw" style="font-size:${sz}px" title="${w}：出现 ${cnt} 次">${w}</span>`;
+  }).join('')}</div>`;
+}
+
+// ── 渲染：综合新闻 ────────────────────────────────────────────
+function renderNews(rss){
+  const items=rss.items||[];
+  if(!items.length) return'<div style="color:var(--muted);font-size:.8rem">暂无数据</div>';
+  const loaded=rss.feeds_ok||0; const fail=rss.feeds_fail||0;
+  const hdr=`<div style="font-size:.67rem;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px">
+    <span>已加载 ${loaded} 个源 / ${rss.total_items||0} 条新闻${fail?` · <span style="color:var(--orange)">${fail} 个源失败</span>`:''}</span>
+    <button class="tx-toggle on" id="tx-toggle" onclick="toggleTranslation()">中文译文</button>
+    <span class="tx-status" id="tx-status"></span>
+  </div>`;
+  return hdr+items.slice(0,14).map(n=>{
+    const esc=n.title.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    return`<div class="n-item">
+      <div class="n-title"><a href="${n.url}" target="_blank" rel="noopener" data-orig="${esc}">${n.title}</a></div>
+      <div class="n-meta">
+        <span>${n.source||''}</span>
+        ${n.published?`<span>${n.published.slice(0,10)}</span>`:''}
+        ${(n.coins||[]).slice(0,3).map(c=>`<span class="coin-tag">${c}</span>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── 渲染：项目追踪 ────────────────────────────────────────────
+function renderTopics(rss){
+  const topics=rss.topics||[];
+  if(!topics.length)
+    return'<div style="color:var(--muted);font-size:.8rem">加载中…（Google News 需要几秒）</div>';
+  return topics.map(t=>`
+    <div class="topic-block">
+      <div class="topic-lbl">
+        ${t.label}
+        <span class="topic-coins">${(t.coins||[]).map(c=>`<span>${c}</span>`).join('')}</span>
+      </div>
+      ${t.items.slice(0,3).map(n=>{
+        const esc=n.title.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+        return`<div class="t-item">
+          <a href="${n.url}" target="_blank" rel="noopener" data-orig="${esc}">${n.title}</a>
+          <span class="t-src">· ${n.source||''}</span>
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+}
+
+// ── 渲染：事件 ────────────────────────────────────────────────
+function renderEvents(ev){
+  if(!ev.has_key) return`<div class="no-key">
+    事件日历需要 CoinMarketCal 免费 Key。<br>
+    在 <code>.env</code> 填入 <code>COINMARKETCAL_KEY=xxx</code> 后重启。<br>
+    <a href="https://coinmarketcal.com/en/api" target="_blank" rel="noopener">→ 免费申请 ↗</a></div>`;
+  if(ev.error) return`<div style="color:var(--red);font-size:.8rem">加载失败：${ev.error}</div>`;
+  if(!ev.items?.length) return'<div style="color:var(--muted);font-size:.8rem">未来 21 天内暂无重大事件</div>';
+  return ev.items.slice(0,10).map(e=>`
+    <div class="ev-item">
+      <div class="ev-date">${e.date?.slice(5)||'—'}</div>
+      <div>
+        <div class="ev-title">${e.title}</div>
+        <div class="ev-meta">
+          ${(e.coins||[]).slice(0,4).map(c=>`<span class="ev-coin">${c}</span>`).join('')}
+          ${(e.categories||[]).map(c=>`<span class="ev-cat">${c}</span>`).join('')}
+          ${e.importance?`<span style="font-size:.6rem;color:var(--muted)">热度 ${e.importance}%</span>`:''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// ── TVL 公共工具 ──────────────────────────────────────────────
+function sClass(c){
+  if(c==null||isNaN(c)) return 's-neu';
+  c=+c;
+  if(c>10) return 's-up2';
+  if(c>2)  return 's-up1';
+  if(c>-2) return 's-neu';
+  if(c>-10)return 's-dn1';
+  return 's-dn2';
+}
+function avg(arr){ return arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:null; }
+
+// 将数值变化量转为 -3~+3 分数（用于生态评分）
+function chgScore(c, lo=2, hi=7){
+  if(c==null||isNaN(c)) return 0; c=+c;
+  if(c>hi*1.5)  return 3;
+  if(c>hi)      return 2;
+  if(c>lo)      return 1;
+  if(c< -hi*1.5)return -3;
+  if(c< -hi)    return -2;
+  if(c< -lo)    return -1;
+  return 0;
+}
+// 分数 → {cls, emoji, label}
+function msGrade(s){
+  if(s>=2)   return{cls:'g-strong',emoji:'🟢',label:'强势'};
+  if(s>=0.8) return{cls:'g-up',   emoji:'🟢',label:'偏强'};
+  if(s>-0.8) return{cls:'g-neu',  emoji:'🟡',label:'中性'};
+  if(s>-2)   return{cls:'g-dn',   emoji:'🟠',label:'偏弱'};
+  return          {cls:'g-weak', emoji:'🔴',label:'弱势'};
+}
+
+// ── 渲染：今日市场风格快照（完整面板）────────────────────────
+function renderMarketStyleFull(d, evData){
+  if(!d||d.error) return`<div style="color:var(--muted);font-size:.82rem">TVL 数据加载后显示…</div>`;
+
+  // Chain/watchlist lookups
+  const cm={};  for(const c of(d.top_chains||[])) cm[c.name]=c;
+  const wm={};  for(const w of(d.watchlist||[]))  wm[w.name]=w;
+
+  // ── Ecosystem score definitions ──────────────────────────
+  const ecosystems=[
+
+    // ETH DeFi
+    (()=>{
+      const eth=cm['Ethereum'];
+      const sc=chgScore(eth?.change_7d)*1.5 + chgScore(eth?.change_1d)*0.5;
+      return{name:'ETH DeFi', score:sc,
+             why:[eth?.change_7d!=null?`TVL 7d ${fmtC(eth.change_7d)}`:null,
+                  eth?.change_1d!=null?`24h ${fmtC(eth.change_1d)}`:null].filter(Boolean)};
+    })(),
+
+    // SOL 生态 — TVL + DEX + Stable（增速优先）
+    (()=>{
+      const s=cm['Solana'], w=wm['Solana'];
+      const dv=w?.dex_vol, dvc=w?.dex_change_7d, sm=w?.stable_mcap;
+      const dvScore= dvc!=null?chgScore(dvc)*0.8:(dv>2e9?2: dv>8e8?1: dv>2e8?0.5: 0);
+      const smScore= sm>3e9?1: sm>1e9?0.5: 0;
+      const sc=chgScore(s?.change_7d)*1.2 + dvScore + smScore;
+      return{name:'SOL 生态', score:sc,
+             why:[s?.change_7d!=null?`TVL 7d ${fmtC(s.change_7d)}`:null,
+                  dvc!=null?`DEX 7d ${fmtC(dvc)}`:dv?`DEX ${fmtL(dv)}`:null,
+                  sm?`Stable ${fmtL(sm)}`:null].filter(Boolean)};
+    })(),
+
+    // Hyperliquid — DEX Volume 权重最高 · 交易链
+    (()=>{
+      const hl=cm['Hyperliquid']||cm['Hyperliquid L1'], w=wm['Hyperliquid'];
+      const dv=w?.dex_vol, dvc=w?.dex_change_7d, sm=w?.stable_mcap;
+      const dvRaw= dvc!=null?chgScore(dvc,5,15):(dv>4e9?3: dv>2e9?2: dv>5e8?1: dv>1e8?0.5: 0);
+      const sc=dvRaw*1.5 + chgScore(hl?.change_7d)*0.5 + (sm>5e8?0.5:0);
+      return{name:'Hyperliquid', score:sc,
+             why:[dvc!=null?`DEX 7d ${fmtC(dvc)}`:dv?`DEX ${fmtL(dv)}`:null,
+                  hl?.change_7d!=null?`TVL 7d ${fmtC(hl.change_7d)}`:null,
+                  sm?`Stable ${fmtL(sm)}`:null].filter(Boolean)};
+    })(),
+
+    // Aptos
+    (()=>{
+      const a=cm['Aptos'], w=wm['Aptos'];
+      const dv=w?.dex_vol, dvc=w?.dex_change_7d;
+      const sc=chgScore(a?.change_7d) + (dvc!=null?chgScore(dvc)*0.5:dv>1e8?0.5:0);
+      return{name:'Aptos', score:sc,
+             why:[a?.change_7d!=null?`TVL 7d ${fmtC(a.change_7d)}`:null,
+                  dvc!=null?`DEX 7d ${fmtC(dvc)}`:dv?`DEX ${fmtL(dv)}`:null].filter(Boolean)};
+    })(),
+
+    // 稳定币 — 7d / 1m 增速是核心信号
+    (()=>{
+      const sc=chgScore(d.stables_change_7d)*1.5 + chgScore(d.stables_change_1m)*0.5;
+      return{name:'稳定币', score:sc,
+             why:[d.stables_change_7d!=null?`7d ${fmtC(d.stables_change_7d)}`:null,
+                  d.stables_change_1m!=null?`1m ${fmtC(d.stables_change_1m)}`:null,
+                  d.stables_total?fmtL(d.stables_total):null].filter(Boolean)};
+    })(),
+
+    // RWA — 7d/1m 增速最重要
+    (()=>{
+      const rwa=d.rwa||[];
+      const a7=avg(rwa.map(r=>r.change_7d).filter(v=>v!=null));
+      const a1m=avg(rwa.map(r=>r.change_1m).filter(v=>v!=null));
+      const sc=chgScore(a7)*1.5 + chgScore(a1m)*0.5;
+      return{name:'RWA', score:sc,
+             why:[a7!=null?`TVL 7d avg ${fmtC(a7)}`:null,
+                  a1m!=null?`1m avg ${fmtC(a1m)}`:null].filter(Boolean)};
+    })(),
+
+    // Bridge — 跨链资金迁移速度
+    (()=>{
+      const br=d.bridges||[];
+      const a7=avg(br.map(b=>b.change_7d).filter(v=>v!=null));
+      const a1=avg(br.map(b=>b.change_1d).filter(v=>v!=null));
+      const sc=chgScore(a7);
+      return{name:'Bridge', score:sc,
+             why:[a7!=null?`TVL 7d avg ${fmtC(a7)}`:null,
+                  a1!=null?`24h avg ${fmtC(a1)}`:null].filter(Boolean)};
+    })(),
+  ];
+
+  ecosystems.sort((a,b)=>b.score-a.score);
+
+  function card(e){
+    const g=msGrade(e.score);
+    // Multi-line why: each reason on its own line
+    const whyHtml=e.why.length
+      ?e.why.slice(0,3).map(w=>`<span style="display:block">${w}</span>`).join('')
+      :'<span style="display:block">数据有限</span>';
+    return`<div class="ms-card ${g.cls}">
+      <span class="ms-ico">${g.emoji}</span>
+      <span class="ms-nm">${e.name}</span>
+      <span class="ms-badge">${g.label}</span>
+      <span class="ms-why" style="text-align:right;line-height:1.5">${whyHtml}</span>
+    </div>`;
+  }
+
+  const strong  = ecosystems.filter(e=>e.score>=0.8);
+  const neutral = ecosystems.filter(e=>e.score>-0.8&&e.score<0.8);
+  const weak    = ecosystems.filter(e=>e.score<=-0.8);
+
+  function group(items, hd){
+    if(!items.length) return '';
+    return`<div class="ms-group-hd">${hd}</div>${items.map(card).join('')}`;
+  }
+
+  let html=`
+    ${group(strong, '🟢 强势生态')}
+    ${group(neutral,'🟡 中性')}
+    ${group(weak,   '🔴 偏弱')}
+    <div style="font-size:.6rem;color:var(--muted);margin-top:10px;line-height:1.7">
+      DefiLlama TVL · DEX Vol · Stablecoin MCap 综合计算 · 7d 变化为主要信号
+    </div>`;
+
+  // Append compact events if CoinMarketCal is configured and has items
+  if(evData?.has_key && evData?.items?.length){
+    const evRows=evData.items.slice(0,5).map(e=>`
+      <div style="padding:5px 0;border-bottom:1px solid var(--s2);font-size:.75rem;line-height:1.4">
+        <span style="color:var(--orange);font-size:.65rem;font-weight:700;margin-right:6px">${(e.date||'').slice(5)||'—'}</span>
+        <span>${e.title}</span>
+        <span style="font-size:.6rem;color:var(--muted);margin-left:4px">${(e.coins||[]).slice(0,3).join(' ')}</span>
+      </div>`).join('');
+    html+=`<div class="ms-events-hd">📅 即将事件</div>${evRows}`;
+  }
+
+  return html;
+}
+
+// ── 渲染：TVL Layer 1 — 全市场宏观 ──────────────────────────
+function renderTVLMacro(d){
+  if(d.error) return`<div style="color:var(--red);font-size:.8rem">加载失败：${d.error}</div>`;
+
+  // 15 chains split into two columns (8 + 7), with 24h / 7d / 1m
+  const chains=d.top_chains||[];
+  function chainRow(c,i){
+    return`<div class="tvl-item" style="gap:4px;padding:5px 0">
+      <span style="font-size:.58rem;color:var(--muted);min-width:14px;text-align:right;flex-shrink:0">${i+1}</span>
+      <span class="tvl-nm" style="font-size:.78rem">${c.name}</span>
+      <span class="tvl-v" style="min-width:50px;font-size:.72rem">${fmtL(c.tvl)}</span>
+      <span class="${sClass(c.change_1d)}" style="min-width:40px;text-align:right;font-size:.72rem;font-variant-numeric:tabular-nums">${fmtC(c.change_1d)}</span>
+      <span class="${sClass(c.change_7d)}" style="min-width:38px;text-align:right;font-size:.68rem;font-variant-numeric:tabular-nums">${fmtC(c.change_7d)}</span>
+      <span class="s-neu" style="min-width:36px;text-align:right;font-size:.64rem;font-variant-numeric:tabular-nums">${fmtC(c.change_1m)}</span>
+    </div>`;
+  }
+
+  const half=Math.ceil(chains.length/2);
+  const col1=chains.slice(0,half).map((c,i)=>chainRow(c,i)).join('');
+  const col2=chains.slice(half).map((c,i)=>chainRow(c,i+half)).join('');
+
+  const protoRows=(d.top_protocols||[]).map((p,i)=>`
+    <div class="tvl-item" style="gap:4px;padding:5px 0">
+      <span style="font-size:.58rem;color:var(--muted);min-width:14px;text-align:right;flex-shrink:0">${i+1}</span>
+      <span class="tvl-nm" style="font-size:.78rem">${p.name}<span class="tvl-cat">${p.category||''}</span></span>
+      <span class="tvl-v" style="min-width:50px;font-size:.72rem">${fmtL(p.tvl)}</span>
+      <span class="${sClass(p.change_1d)}" style="min-width:40px;text-align:right;font-size:.72rem;font-variant-numeric:tabular-nums">${fmtC(p.change_1d)}</span>
+      <span class="${sClass(p.change_7d)}" style="min-width:38px;text-align:right;font-size:.68rem;font-variant-numeric:tabular-nums">${fmtC(p.change_7d)}</span>
+    </div>`).join('');
+
+  const hdr=`<div style="display:flex;justify-content:space-between;align-items:center;
+              margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--bd)">
+    <span style="font-size:.67rem;color:var(--muted);font-weight:600">DeFi 总 TVL（排除 CEX）</span>
+    <span style="font-size:1.05rem;font-weight:700">${fmtL(d.total_tvl)}</span>
+  </div>`;
+
+  const chainColHd=`<div style="display:flex;gap:4px;font-size:.58rem;font-weight:700;color:var(--muted);
+                              text-transform:uppercase;letter-spacing:.05em;
+                              margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--s2)">
+    <span style="min-width:14px"></span>
+    <span style="flex:1">Chain</span>
+    <span style="min-width:50px;text-align:right">TVL</span>
+    <span style="min-width:40px;text-align:right">24h</span>
+    <span style="min-width:38px;text-align:right">7d</span>
+    <span style="min-width:36px;text-align:right">1m</span>
+  </div>`;
+
+  return`${hdr}
+  <div style="margin-bottom:14px">
+    <div class="tvl-col-hd" style="color:var(--blue)">Top 15 Chains
+      <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;font-size:.6rem">24h · 7d · 1m</span>
+    </div>
+    <div class="tvl-inner-grid">
+      <div>${chainColHd}${col1}</div>
+      <div>${chainColHd}${col2}</div>
+    </div>
+  </div>
+  <div>
+    <div class="tvl-col-hd" style="color:var(--purple)">Top Protocols
+      <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;font-size:.6rem">24h · 7d</span>
+    </div>
+    ${protoRows||'<div class="tvl-no-data">暂无数据</div>'}
+  </div>`;
+}
+
+// ── 渲染：TVL Layer 2 — 异动监控 ─────────────────────────────
+function renderTVLMoves(d){
+  if(d.error) return`<div style="color:var(--red);font-size:.8rem">加载失败：${d.error}</div>`;
+
+  const gainers=d.tvl_gainers||[], losers=d.tvl_losers||[];
+  if(!gainers.length&&!losers.length)
+    return'<div class="tvl-no-data">暂无异动数据（TVL > $10M 且有 24h 变化）</div>';
+
+  function moveRow(p){
+    const up=(p.change_1d||0)>=0;
+    return`<div class="tvl-item" style="gap:7px">
+      <span class="tvl-nm">${p.name}<span class="tvl-cat">${p.category||''}</span></span>
+      <span class="tvl-v">${fmtL(p.tvl)}</span>
+      <span class="tvl-c ${up?'up':'dn'}" style="min-width:58px;font-size:.82rem;font-weight:800">
+        ${up?'▲':'▼'} ${Math.abs(p.change_1d||0).toFixed(1)}%
+      </span>
+    </div>`;
+  }
+
+  return`<div class="tvl-inner-grid">
+    <div>
+      <div class="tvl-col-hd" style="color:var(--green)">▲ 24h 涨幅 Top
+        <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">资金流入</span>
+      </div>
+      ${gainers.map(moveRow).join('')}
+    </div>
+    <div>
+      <div class="tvl-col-hd" style="color:var(--red)">▼ 24h 跌幅 Top
+        <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">资金流出</span>
+      </div>
+      ${losers.map(moveRow).join('')}
+    </div>
+  </div>`;
+}
+
+// ── 渲染：TVL Layer 3 — 重点生态 Watchlist ───────────────────
+function renderTVLWatchlist(d){
+  if(d.error) return`<div style="color:var(--red);font-size:.8rem">加载失败：${d.error}</div>`;
+
+  const items=d.watchlist||[];
+  if(!items.length) return'<div class="tvl-no-data">暂无数据</div>';
+
+  // Debug: dump watchlist raw data to console for diagnosis
+  console.log('[TVL Watchlist raw]', JSON.stringify(items.map(x=>({
+    name:x.name, actual:x.actual_name, tvl:x.tvl,
+    stable:x.stable_mcap, dex:x.dex_vol, c7d:x.change_7d
+  }))));
+
+  const dex=d.dex_by_chain||{};
+
+  function wRow(item){
+    const has=item.tvl!=null;
+    const tC =item.type==='chain'?'rgba(88,166,255,.1)':'rgba(188,140,255,.1)';
+    const tCol=item.type==='chain'?'var(--blue)':'var(--purple)';
+
+    const sm=item.stable_mcap;
+    const smStr=(sm!=null&&sm>0)?fmtL(sm):'—';
+    const dv=item.dex_vol!=null?item.dex_vol:dex[item.name];
+    const dvStr=(dv!=null&&dv>0)?fmtL(dv):'—';
+    // DEX 7d change — from watchlist item or from dex_change_by_chain
+    const dvc=item.dex_change_7d!=null?item.dex_change_7d:(d.dex_change_by_chain||{})[item.name];
+    const chg7Class=has?sClass(item.change_7d):'s-neu';
+    const dexCls=dvc!=null?sClass(dvc):'s-neu';
+
+    const mappedTo=item.actual_name&&item.actual_name!==item.name
+      ?`<span style="font-size:.52rem;color:var(--muted);display:block;line-height:1.2">→ ${item.actual_name}</span>`
+      :(item.actual_name==null&&item.tvl==null
+        ?`<span style="font-size:.52rem;color:var(--red);display:block;line-height:1.2">未匹配</span>`:'');
+
+    return`<div class="tvl-item" style="gap:5px;padding:7px 0;align-items:flex-start">
+      <div style="min-width:82px;flex-shrink:0">
+        <span style="font-weight:700;font-size:.8rem">${item.name}</span>
+        ${mappedTo}
+      </div>
+      <span style="font-size:.54rem;padding:1px 4px;border-radius:3px;margin-top:2px;
+                   background:${tC};color:${tCol};flex-shrink:0;white-space:nowrap;align-self:flex-start">
+        ${item.type==='chain'?'chain':'proto'}
+      </span>
+      <span class="tvl-v" style="min-width:48px;font-size:.73rem;margin-top:2px"
+            title="TVL">${has?fmtL(item.tvl):'—'}</span>
+      <span style="min-width:48px;text-align:right;font-size:.71rem;margin-top:2px;
+                   font-variant-numeric:tabular-nums;color:${(sm!=null&&sm>0)?'var(--text)':'var(--muted)'}"
+            title="Stable MCap">${smStr}</span>
+      <span style="min-width:46px;text-align:right;font-size:.71rem;margin-top:2px;
+                   font-variant-numeric:tabular-nums;color:${(dv!=null&&dv>0)?'var(--blue)':'var(--muted)'}"
+            title="DEX 24h Vol">${dvStr}</span>
+      <span class="${dexCls}" style="min-width:42px;text-align:right;font-size:.71rem;margin-top:2px;
+                   font-variant-numeric:tabular-nums;font-weight:700"
+            title="DEX 7d Change">${dvc!=null?fmtC(dvc):'—'}</span>
+      <span class="${chg7Class}" style="min-width:42px;text-align:right;font-size:.73rem;margin-top:2px;
+                   font-variant-numeric:tabular-nums;font-weight:700"
+            title="TVL 7d">${has?fmtC(item.change_7d):'—'}</span>
+    </div>`;
+  }
+
+  return`
+    <div class="tvl-th-row" style="gap:5px">
+      <span style="min-width:82px;flex-shrink:0">Name</span>
+      <span style="min-width:36px;flex-shrink:0"></span>
+      <span style="min-width:48px;text-align:right">TVL</span>
+      <span style="min-width:48px;text-align:right">Stable</span>
+      <span style="min-width:46px;text-align:right;color:var(--blue)">DEX</span>
+      <span style="min-width:42px;text-align:right;color:var(--blue)">DEX 7d</span>
+      <span style="min-width:42px;text-align:right">TVL 7d</span>
+    </div>
+    ${items.map(wRow).join('')}
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:9px;
+                padding-top:8px;border-top:1px solid var(--s2)">
+      <span style="font-size:.6rem;color:var(--muted)">
+        红色"未匹配" = 链名与 DefiLlama 不符 · 点"链名诊断"查看原始映射
+      </span>
+      <button onclick="runChainDiag()" style="font-size:.6rem;padding:2px 8px;
+              border:1px solid var(--bd);border-radius:4px;background:var(--s2);
+              color:var(--blue);cursor:pointer;white-space:nowrap">🔍 链名诊断</button>
+    </div>
+    <div id="chain-diag-out" style="display:none;margin-top:8px;font-size:.68rem;
+         background:var(--s2);border-radius:6px;padding:10px 12px;line-height:2"></div>`;
+}
+
+// ── 链名诊断工具 ──────────────────────────────────────────────
+async function runChainDiag(){
+  const out=document.getElementById('chain-diag-out');
+  if(!out) return;
+  out.style.display='block';
+  out.innerHTML='<span style="color:var(--muted)">正在查询 DefiLlama 原始链名…</span>';
+  try{
+    const r=await fetch(`${API}/api/debug_llama`);
+    const data=await r.json();
+    if(data.error){ out.innerHTML=`<span style="color:var(--red)">❌ ${data.error}</span>`; return; }
+
+    // Watchlist mapping table
+    const rows=(data.watchlist_debug||[]).map(item=>{
+      const ok=item.found;
+      const c7=item.change_7d!=null?fmtC(item.change_7d):'—';
+      const sm=item.stable_mcap?fmtL(item.stable_mcap):'—';
+      return`<div style="display:flex;gap:10px;align-items:center;padding:2px 0">
+        <span style="min-width:100px;font-weight:700;color:${ok?'var(--text)':'var(--red)'}">${item.name}</span>
+        <span style="color:${ok?'var(--green)':'var(--red)'};min-width:60px">${ok?'✓ 已匹配':'✗ 未匹配'}</span>
+        <span style="color:var(--muted);min-width:52px">TVL: ${item.tvl!=null?fmtL(item.tvl):'—'}</span>
+        <span style="color:var(--muted);min-width:52px">7d: ${c7}</span>
+        <span style="color:var(--muted)">Stable: ${sm}</span>
+      </div>`;
+    }).join('');
+
+    // DEX test results
+    const dexRows=Object.entries(data.dex_test||{}).map(([k,v])=>
+      `<span style="color:${v.ok?'var(--green)':'var(--red)'}">${k}: ${v.ok?fmtL(v.total24h):'✗ '+v.error}</span>`
+    ).join(' &nbsp;|&nbsp; ');
+
+    out.innerHTML=`
+      <div style="font-weight:700;color:var(--blue);margin-bottom:5px">Watchlist 映射结果：</div>
+      ${rows}
+      <div style="font-weight:700;color:var(--blue);margin-top:8px;margin-bottom:4px">DEX 端点测试：</div>
+      <div style="line-height:1.8">${dexRows}</div>
+      <div style="color:var(--muted);margin-top:6px;font-size:.6rem">
+        DefiLlama 实际链名（前30）：${(data.chain_names_sample||[]).slice(0,30).join(' / ')}
+      </div>`;
+  }catch(e){
+    out.innerHTML=`<span style="color:var(--red)">❌ 请求失败：${e.message}</span>`;
+  }
+}
+
+// ── 渲染：TVL Layer 4 — 稳定币资金流 ─────────────────────────
+function renderTVLStables(d){
+  if(d.error) return`<div style="color:var(--red);font-size:.8rem">加载失败：${d.error}</div>`;
+
+  const tot=d.stables_total;
+  const stables=d.stables||[];
+
+  const totBox=tot?`
+    <div class="tvl-stat-box">
+      <span style="font-size:.67rem;color:var(--muted);font-weight:600">稳定币总市值</span>
+      <div style="text-align:right">
+        <div style="font-size:1rem;font-weight:700">${fmtL(tot)}</div>
+        <div class="tvl-stat-chgs" style="margin-top:2px;justify-content:flex-end">
+          <span class="tvl-chg-sm ${cc(d.stables_change_1d)}">${fmtC(d.stables_change_1d)} 1d</span>
+          <span class="tvl-chg-sm ${cc(d.stables_change_7d)}">${fmtC(d.stables_change_7d)} 7d</span>
+          <span class="tvl-chg-sm ${cc(d.stables_change_1m)}">${fmtC(d.stables_change_1m)} 1m</span>
+        </div>
+      </div>
+    </div>`:'';
+
+  if(!stables.length) return totBox+'<div class="tvl-no-data">暂无数据</div>';
+
+  const rows=stables.map(s=>{
+    const noData = !s.mcap || s.mcap === 0;
+    return`<div class="tvl-item" style="gap:5px;opacity:${noData?0.4:1}">
+      <span style="font-size:.68rem;font-weight:700;min-width:42px;color:var(--text);flex-shrink:0">${s.symbol}</span>
+      <span class="tvl-nm" style="font-size:.75rem">${noData?`<span style="color:var(--muted)">${s.name}</span>`:s.name}</span>
+      <span class="tvl-v" style="min-width:55px">${noData?'—':fmtL(s.mcap)}</span>
+      <span class="tvl-c ${cc(s.change_1d)}" style="min-width:46px">${noData?'—':fmtC(s.change_1d)}</span>
+      <span class="tvl-c ${cc(s.change_7d)}" style="min-width:42px;font-size:.72rem">${noData?'—':fmtC(s.change_7d)}</span>
+    </div>`;
+  }).join('');
+
+  return totBox+`
+    <div class="tvl-th-row">
+      <span style="min-width:42px;flex-shrink:0">Sym</span>
+      <span style="flex:1">Name</span>
+      <span style="min-width:55px;text-align:right">MCap</span>
+      <span style="min-width:46px;text-align:right">24h</span>
+      <span style="min-width:42px;text-align:right">7d</span>
+    </div>
+    ${rows}
+    <div style="font-size:.6rem;color:var(--muted);margin-top:8px">
+      DefiLlama Stablecoins · 稳定币净增长 = 真钱进场信号
+    </div>`;
+}
+
+// ── 渲染：TVL Layer 5 — RWA 链上资金 ─────────────────────────
+function renderTVLRwa(d){
+  if(d.error) return`<div style="color:var(--red);font-size:.8rem">加载失败：${d.error}</div>`;
+
+  const rwa=d.rwa||[];
+  if(!rwa.length) return`
+    <div class="tvl-no-data">
+      暂无 RWA 协议数据 — DefiLlama RWA 分类可能较少，常见协议：BUIDL / Ondo / Hashnote / Maple
+    </div>`;
+
+  const rowArr=rwa.map((p,i)=>`
+    <div class="tvl-item" style="gap:5px;padding:6px 0">
+      <span style="font-size:.58rem;color:var(--muted);min-width:14px;text-align:right;flex-shrink:0">${i+1}</span>
+      <span class="tvl-nm">${p.name}<span class="tvl-cat">${p.category||''}</span></span>
+      <span class="tvl-v" style="min-width:52px">${fmtL(p.tvl)}</span>
+      <span class="${sClass(p.change_1d)}" style="min-width:42px;text-align:right;font-size:.75rem;font-variant-numeric:tabular-nums">${fmtC(p.change_1d)}</span>
+      <span class="${sClass(p.change_7d)}" style="min-width:40px;text-align:right;font-size:.72rem;font-variant-numeric:tabular-nums">${fmtC(p.change_7d)}</span>
+      <span class="s-neu" style="min-width:40px;text-align:right;font-size:.68rem;font-variant-numeric:tabular-nums">${fmtC(p.change_1m)}</span>
+    </div>`);
+
+  const half=Math.ceil(rowArr.length/2);
+  const hd=`<div style="display:flex;gap:5px;font-size:.58rem;font-weight:700;color:var(--muted);
+                         text-transform:uppercase;letter-spacing:.04em;
+                         padding-bottom:4px;border-bottom:1px solid var(--s2);margin-bottom:3px">
+    <span style="min-width:14px"></span><span style="flex:1">Protocol</span>
+    <span style="min-width:52px;text-align:right">TVL</span>
+    <span style="min-width:42px;text-align:right">24h</span>
+    <span style="min-width:40px;text-align:right">7d</span>
+    <span style="min-width:40px;text-align:right">1m</span>
+  </div>`;
+
+  return`<div class="tvl-inner-grid">
+    <div>${hd}${rowArr.slice(0,half).join('')}</div>
+    <div>${hd}${rowArr.slice(half).join('')}</div>
+  </div>
+  <div style="font-size:.6rem;color:var(--muted);margin-top:8px">
+    DefiLlama RWA 分类 · 增速 = 传统资本上链信心 · 7d/1m 流入更重要于单日
+  </div>`;
+}
+
+// ── 渲染：TVL Layer 6 — Bridge Flow ──────────────────────────
+function renderTVLBridge(d){
+  if(d.error) return`<div style="color:var(--red);font-size:.8rem">加载失败：${d.error}</div>`;
+
+  const bridges=d.bridges||[];
+  if(!bridges.length) return`
+    <div class="tvl-no-data">暂无桥接协议数据 — 常见协议：Wormhole / Hyperlane / Stargate / Lombard</div>`;
+
+  const rowArr=bridges.map((p,i)=>`
+    <div class="tvl-item" style="gap:5px;padding:6px 0">
+      <span style="font-size:.58rem;color:var(--muted);min-width:14px;text-align:right;flex-shrink:0">${i+1}</span>
+      <span class="tvl-nm">${p.name}<span class="tvl-cat">${p.category||''}</span></span>
+      <span class="tvl-v" style="min-width:52px">${fmtL(p.tvl)}</span>
+      <span class="${sClass(p.change_1d)}" style="min-width:42px;text-align:right;font-size:.75rem;font-variant-numeric:tabular-nums">${fmtC(p.change_1d)}</span>
+      <span class="${sClass(p.change_7d)}" style="min-width:40px;text-align:right;font-size:.72rem;font-variant-numeric:tabular-nums">${fmtC(p.change_7d)}</span>
+    </div>`);
+
+  const half=Math.ceil(rowArr.length/2);
+  const hd=`<div style="display:flex;gap:5px;font-size:.58rem;font-weight:700;color:var(--muted);
+                         text-transform:uppercase;letter-spacing:.04em;
+                         padding-bottom:4px;border-bottom:1px solid var(--s2);margin-bottom:3px">
+    <span style="min-width:14px"></span><span style="flex:1">Bridge</span>
+    <span style="min-width:52px;text-align:right">TVL</span>
+    <span style="min-width:42px;text-align:right">24h</span>
+    <span style="min-width:40px;text-align:right">7d</span>
+  </div>`;
+
+  return`<div class="tvl-inner-grid">
+    <div>${hd}${rowArr.slice(0,half).join('')}</div>
+    <div>${hd}${rowArr.slice(half).join('')}</div>
+  </div>
+  <div style="font-size:.6rem;color:var(--muted);margin-top:8px">
+    DefiLlama Bridge 分类 · 桥接 TVL 涨 = 资金从其他链迁移进来的信号
+  </div>`;
+}
+
+// ── 渲染：未来重大解锁（供应压力）────────────────────────────
+function renderUnlocks(data){
+  if(!data||data.error) return`<div class="tvl-no-data">加载失败：${data?.error||''}</div>`;
+  const items=data.items||[];
+  if(!items.length) return`<div class="tvl-no-data">未来 45 天内无已知重大解锁事件</div>`;
+
+  function catStyle(cat){
+    const m={
+      'VC':        ['188,140,255','#bc8cff'],
+      'Team':      ['248,81,73',  '#f85149'],
+      'Foundation':['227,179,65', '#e3b341'],
+      'Ecosystem': ['88,166,255', '#58a6ff'],
+      'Community': ['63,185,80',  '#3fb950'],
+    };
+    return m[cat]||['139,148,158','#8b949e'];
+  }
+  function impactColor(pct){
+    if(pct>=5)  return'#f85149';  // >=5%  — 红
+    if(pct>=3)  return'#f0883e';  // 3-5%  — 橙
+    if(pct>=1)  return'#e3b341';  // 1-3%  — 黄
+    return'var(--muted)';          // <1%   — 灰
+  }
+  function impactLabel(pct){
+    if(pct>=5) return'⚠ 高压';
+    if(pct>=3) return'⚡ 较高';
+    if(pct>=1) return'△ 中等';
+    return'○ 低压';
+  }
+  function daysLabel(n){
+    if(n<=0) return'今天';
+    if(n===1) return'明天';
+    if(n<=7)  return`${n}天后`;
+    return`${n}d`;
+  }
+
+  // 同一币种合并为一行，但保留每次解锁的明细
+  // items 已按 date 升序排列，因此每个 token 的 unlocks 数组天然按距今由近到远排列
+  const grouped={};
+  items.forEach(item=>{
+    const g=grouped[item.token];
+    if(!g) grouped[item.token]={token:item.token, name:item.name, cat:item.cat, note:item.note, unlocks:[item]};
+    else g.unlocks.push(item);
+  });
+  const merged=Object.values(grouped).map(g=>({
+    ...g,
+    nearest: g.unlocks[0],
+    maxPct: Math.max(...g.unlocks.map(u=>u.pct)),
+  })).sort((a,b)=>(a.nearest.days_until||0)-(b.nearest.days_until||0));
+
+  const thStyle='padding:6px 8px;text-align:left;color:var(--muted);font-weight:700;'
+    +'font-size:.6rem;text-transform:uppercase;letter-spacing:.05em;'
+    +'border-bottom:1px solid var(--bd);white-space:nowrap';
+  const tdBase='padding:4px 8px;vertical-align:middle';
+
+  const rows=merged.map(g=>{
+    const [rgb,hex]=catStyle(g.cat);
+    const nearestIc=impactColor(g.nearest.pct);
+    const maxIc=impactColor(g.maxPct);
+    const detailTags=g.unlocks.slice(0,3).map(u=>{
+      const ic=impactColor(u.pct);
+      return`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--s2);
+                   border:1px solid var(--bd);border-radius:4px;padding:1px 6px;margin:1px 3px 1px 0;
+                   font-size:.64rem;white-space:nowrap;line-height:1.7">
+               <span style="color:var(--text)">${u.date.slice(5)}</span>
+               <span style="color:var(--muted)">${daysLabel(u.days_until||0)}</span>
+               <span style="color:${ic};font-weight:700">${u.pct}%</span>
+             </span>`;
+    }).join('');
+    const extra=g.unlocks.length>3
+      ?`<span style="color:var(--muted);font-size:.64rem;font-weight:700">+${g.unlocks.length-3}</span>`:'';
+
+    return`<tr style="height:44px;border-bottom:1px solid var(--s2)">
+      <td style="${tdBase};font-weight:800;font-size:.8rem;color:var(--orange)">${g.token}</td>
+      <td style="${tdBase};font-size:.74rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;
+                  white-space:nowrap;max-width:0" title="${g.note}">${g.note}</td>
+      <td style="${tdBase}">
+        <span style="font-size:.62rem;padding:1px 7px;border-radius:3px;white-space:nowrap;
+                     background:rgba(${rgb},.15);color:${hex}">${g.cat}</span>
+      </td>
+      <td style="${tdBase};line-height:1.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0">${detailTags}${extra}</td>
+      <td style="${tdBase};font-size:.7rem;font-weight:700;color:${nearestIc};white-space:nowrap">
+        ${g.nearest.date.slice(5)} <span style="color:var(--muted);font-weight:400">· ${daysLabel(g.nearest.days_until||0)}</span>
+      </td>
+      <td style="${tdBase};font-size:.78rem;font-weight:800;color:${maxIc}"
+          title="${impactLabel(g.maxPct)}">${g.maxPct}%</td>
+    </tr>`;
+  }).join('');
+
+  const highImpact=items.filter(i=>i.pct>=5);
+  const alert=highImpact.length
+    ?`<div style="background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.25);
+                  border-radius:7px;padding:8px 12px;margin-bottom:10px;font-size:.72rem;color:var(--red)">
+        ⚠ <strong>高压解锁预警</strong>：${highImpact.map(i=>`${i.token} (${i.date.slice(5)} · ${i.pct}%)`).join(' / ')}
+      </div>`:'';
+
+  return`${alert}
+    <div style="overflow-x:auto">
+    <table style="width:100%;min-width:1110px;border-collapse:collapse;table-layout:fixed">
+      <colgroup>
+        <col style="width:70px"><col style="width:360px"><col style="width:120px">
+        <col style="width:360px"><col style="width:100px"><col style="width:100px">
+      </colgroup>
+      <thead><tr>
+        <th style="${thStyle}">Token</th>
+        <th style="${thStyle}">解锁来源</th>
+        <th style="${thStyle}">类别</th>
+        <th style="${thStyle}">解锁明细</th>
+        <th style="${thStyle}">最近一次</th>
+        <th style="${thStyle}">最高流通%</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+    <div style="font-size:.58rem;color:var(--orange);margin-top:9px;line-height:1.7">
+      ⚠ 数据为近似值，请以项目方/链上公告为准；单次解锁 >5% 流通视为高压力事件。
+    </div>`;
+}
+
+// ── 币种卡片 ──────────────────────────────────────────────────
+function cardSkeleton(coin){
+  return`<div class="coin-card">
+    <div class="c-head">
+      <div style="display:flex;align-items:center;gap:9px">
+        <div class="c-av">${coin.t.slice(0,3)}</div>
+        <div><div class="c-tk">${coin.t}</div><div class="c-nm">${coin.n}</div></div>
+      </div>
+      <div><div class="skel" style="height:18px;width:75px;margin-bottom:4px"></div>
+           <div class="skel" style="height:12px;width:45px;margin-left:auto"></div></div>
+    </div>
+    <div class="c-inds">
+      ${[65,55,60,55].map(w=>`<div class="skel" style="height:16px;width:${w}px;border-radius:3px"></div>`).join('')}
+    </div>
+    <div class="c-foot"><div class="skel" style="height:13px;width:65px"></div></div>
+  </div>`;
+}
+
+function renderCard(coin, d, newsItems){
+  const isPri = PRIORITY.has(coin.t);
+
+  if(!d||d.ok===false) return`<div class="coin-card" id="card-${coin.t}">
+    <div class="c-head">
+      <div style="display:flex;align-items:center;gap:9px">
+        <div class="c-av" style="background:rgba(248,81,73,.1);color:var(--red)">${coin.t.slice(0,4)}</div>
+        <div><div class="c-tk">${coin.t}</div><div class="c-nm">${coin.n}</div></div>
+      </div>
+    </div>
+    <div style="padding:0 14px 12px;font-size:.75rem;color:var(--muted)">${d?.error||'暂无数据'}</div>
+  </div>`;
+
+  const up=d.chg24>=0; const sc=d.score||0;
+  const scC=sc>=2?'bull':sc<=-2?'bear':'neu';
+  const cardC=sc>=2?'bull':sc<=-2?'bear':'';
+  const ma=d.ma||{}; const rsi=d.rsi||{}; const macd=d.macd||{}; const vol=d.vol||{};
+
+  const related=(newsItems||[]).filter(n=>(n.coins||[]).includes(coin.t)).slice(0,2);
+  const snip=related.length?`<div class="c-snip">${related.map(n=>
+    `<div>• <a href="${n.url}" target="_blank" rel="noopener">${n.title.slice(0,58)}…</a></div>`
+  ).join('')}</div>`:'';
+
+  const btnCls = isPri ? 'ai-btn pri' : 'ai-btn';
+  const btnLabel = isPri ? '🧠 AI 叙事分析' : '🧠 分析';
+
+  return`<div class="coin-card ${cardC}" id="card-${coin.t}">
+    <div class="c-head">
+      <div style="display:flex;align-items:center;gap:9px">
+        <div class="c-av">${coin.t.slice(0,4)}</div>
+        <div><div class="c-tk">${coin.t}</div><div class="c-nm">${coin.n}</div></div>
+      </div>
+      <div>
+        <div class="c-pr" style="color:${up?'var(--green)':'var(--red)'}">${fmtP(d.price)}</div>
+        <div class="c-ch ${up?'up':'dn'}">${up?'▲':'▼'} ${Math.abs(d.chg24).toFixed(2)}%</div>
+      </div>
+    </div>
+    <div class="c-inds">
+      <span class="chip ${chipC(ma.signal)}">${ma.signal||'—'}</span>
+      <span class="chip ${chipC(rsi.desc)}">RSI ${rsi.desc||'—'}</span>
+      <span class="chip ${chipC(macd.desc)}">${macd.desc||'—'}</span>
+      <span class="chip ${chipC(vol.desc)}">${vol.desc||'—'}</span>
+    </div>
+    <div class="c-foot">
+      <div class="c-sc">综合 <span class="sv ${scC}">${sc>0?'+':''}${sc}/6</span></div>
+      <button class="${btnCls}" id="aibtn-${coin.t}"
+              onclick="analyzeOneCoin('${coin.t}')">${btnLabel}</button>
+    </div>
+    ${snip}
+    <div class="ai-section" id="ai-${coin.t}"></div>
+  </div>`;
+}
+
+// ── AI 叙事分析 ───────────────────────────────────────────────
+
+// Claude 输出格式化：把纯文本变成带样式的 HTML
+function formatAI(text) {
+  return text
+    // 【标题】→ 高亮块
+    .replace(/【(.+?)】/g, '<span class="ai-head">【$1】</span>')
+    // **粗体**
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // 操作建议标签着色
+    .replace(/\b(观察)\b/g, '<span class="ai-tag-watch">$1</span>')
+    .replace(/\b(小额补仓|等待确认)\b/g, '<span class="ai-tag-buy">$1</span>')
+    .replace(/\b(分批止盈)\b/g, '<span class="ai-tag-sell">$1</span>')
+    .replace(/\b(风险升高)\b/g, '<span class="ai-tag-risk">$1</span>')
+    // 小节头（📊🔍🧠⚡⚠️）加上 ai-s 样式
+    .replace(/(📊|🔍|🧠|⚡|⚠️)\s*(.+)/g, '<span class="ai-s">$1 $2</span>')
+    // 换行
+    .replace(/\n/g, '<br>')
+    // bullet
+    .replace(/•\s/g, '<span class="ai-bullet">•</span> ');
+}
+
+// 为指定币种组装 intel 数据，然后调 /api/analyze
+async function analyzeOneCoin(ticker) {
+  const btn     = document.getElementById(`aibtn-${ticker}`);
+  const section = document.getElementById(`ai-${ticker}`);
+  if (!section) return;
+
+  const prevLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '分析中…';
+  section.className = 'ai-section show';
+  section.innerHTML = `<div class="ai-loading">
+    <div class="spin"></div>Claude 正在综合分析，约 10–20 秒…</div>`;
+
+  // 从全局 _intel 提取该币相关数据
+  const rss      = _intel.rss      || {};
+  const allNews  = rss.items        || [];
+  const topics   = rss.topics       || [];
+  const mentions = rss.coin_mentions|| [];
+  const allKws   = rss.top_keywords || [];
+
+  const relevant_news   = allNews.filter(n => (n.coins||[]).includes(ticker)).slice(0,6);
+  const lookonchain_news= allNews.filter(n => n.source === 'Lookonchain').slice(0,6);
+
+  // 找该币对应的 Google News 主题（可能有多个）
+  const coinTopics = topics.filter(t => (t.coins||[]).includes(ticker));
+  const topic      = coinTopics[0] || {};
+  const topic_items= coinTopics.flatMap(t => t.items||[]).slice(0,6);
+
+  const mention_count = (mentions.find(([t]) => t === ticker)||[null,0])[1];
+
+  // 过滤相关关键词（优先该币的提示词，其次通用高频词）
+  const hints = new Set(COIN_KW[ticker] || []);
+  const related_keywords = allKws
+    .map(([w]) => w)
+    .filter(w => hints.has(w) || !['bitcoin','ethereum','solana','price','market','new'].includes(w))
+    .slice(0, 14);
+
+  const payload = {
+    coin:            ticker,
+    price_data:      (_intel.prices||{})[ticker] || {},
+    relevant_news,
+    lookonchain_news,
+    topic_items,
+    topic_label:     topic.label || ticker,
+    mention_count,
+    related_keywords,
+  };
+
+  try {
+    const r    = await fetch(`${API}/api/analyze`, {
+      method:  'POST',
+      headers: {'Content-Type':'application/json'},
+      body:    JSON.stringify(payload),
+    });
+    const data = await r.json();
+
+    if (data.error) {
+      section.innerHTML = `<div class="ai-err">❌ ${data.error}</div>`;
+      btn.textContent = prevLabel;
+    } else {
+      section.innerHTML = `
+        <div class="ai-out">${formatAI(data.summary)}</div>
+        <div class="ai-ts">${data.model||'Claude'} · ${data.timestamp}</div>`;
+      btn.className = btn.className.replace('pri','').replace('ai-btn','ai-btn done').trim();
+      btn.textContent = '🔄 重新分析';
+    }
+  } catch(e) {
+    section.innerHTML = `<div class="ai-err">❌ 请求失败：${e.message}</div>`;
+    btn.textContent = prevLabel;
+  }
+
+  btn.disabled = false;
+}
+
+// ════════════════════════════════════════════════════════════
+//  翻译模块（Google Translate 免费接口，无需 API Key）
+// ════════════════════════════════════════════════════════════
+let _txOn = true;        // true=显示中文，false=显示英文原文
+const _txCache = {};     // 原文 → 中文 内存缓存
+
+async function gtrans(text) {
+  if (!text) return text;
+  if (_txCache[text]) return _txCache[text];
+  try {
+    const url = 'https://translate.googleapis.com/translate_a/single' +
+      `?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(text)}`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const d = await r.json();
+    const zh = d[0].map(s => s[0]).join('');
+    _txCache[text] = zh;
+    return zh;
+  } catch(e) {
+    return text;  // 失败时回退到原文
+  }
+}
+
+// 翻译页面上所有带 data-orig 但还没翻译的链接（分批并发，避免速率限制）
+async function translateAllTitles() {
+  const links = [...document.querySelectorAll('a[data-orig]:not([data-zh])')];
+  if (!links.length) return;
+
+  const statusEl = document.getElementById('tx-status');
+  if (statusEl) statusEl.textContent = `翻译中 0/${links.length}…`;
+
+  const BATCH = 6;
+  let done = 0;
+  for (let i = 0; i < links.length; i += BATCH) {
+    await Promise.all(links.slice(i, i + BATCH).map(async el => {
+      const orig = el.dataset.orig;
+      const zh = await gtrans(orig);
+      el.dataset.zh = zh;
+      if (_txOn) el.textContent = zh;
+      done++;
+    }));
+    if (statusEl) statusEl.textContent = done < links.length ? `翻译中 ${done}/${links.length}…` : '';
+    if (i + BATCH < links.length) await new Promise(r => setTimeout(r, 120));
+  }
+}
+
+// 切换原文/译文显示
+function applyTranslation() {
+  document.querySelectorAll('a[data-orig]').forEach(el => {
+    el.textContent = (_txOn && el.dataset.zh) ? el.dataset.zh : el.dataset.orig;
+  });
+}
+
+function toggleTranslation() {
+  _txOn = !_txOn;
+  const btn = document.getElementById('tx-toggle');
+  if (btn) {
+    btn.className = _txOn ? 'tx-toggle on' : 'tx-toggle';
+    btn.textContent = _txOn ? '中文译文' : '英文原文';
+  }
+  applyTranslation();
+  // 切回中文时，补翻新增但还未翻译的条目
+  if (_txOn) translateAllTitles();
+}
+
+// ════════════════════════════════════════════════════════════
+//  Step 1 — 渐进式加载（价格快、RSS 慢，分开加载不阻塞）
+// ════════════════════════════════════════════════════════════
+
+async function checkServer(){
+  try{
+    const r=await fetch(`${API}/api/status`,{signal:AbortSignal.timeout(4000)});
+    if(!r.ok) throw new Error();
+    const d=await r.json();
+    document.getElementById('srv-dot').className='dot g';
+    document.getElementById('srv-lbl').textContent='在线';
+    document.getElementById('offline').style.display='none';
+    document.getElementById('srow').style.display='flex';
+    document.getElementById('cfg-cmc').innerHTML=d.coinmarketcal_key
+      ?'<span style="color:var(--green)">✅</span>'
+      :'<span style="color:var(--orange)">未配置</span>';
+    return true;
+  }catch{
+    document.getElementById('srv-dot').className='dot r';
+    document.getElementById('srv-lbl').textContent='离线';
+    document.getElementById('offline').style.display='block';
+    return false;
+  }
+}
+
+function updateFeedHealth(rss){
+  const ok=rss.feeds_ok||0, fail=rss.feeds_fail||0;
+  const el=document.getElementById('cfg-rss');
+  if(!el) return;
+  const color=fail>2?'var(--orange)':'var(--green)';
+  el.innerHTML=`<span style="color:${color}">${ok} 源成功</span>`
+    +(fail?` · <span style="color:var(--red)">${fail} 失败</span>`:'');
+  // Log failed feeds to console for debugging
+  (rss.feeds_detail||[]).filter(f=>f.status!=='ok').forEach(f=>{
+    console.warn(`RSS 失败: ${f.name} — ${f.error||f.status}`);
+  });
+}
+
+function updateCardSnippets(newsItems){
+  COIN_LIST.forEach(coin=>{
+    const card=document.getElementById(`card-${coin.t}`);
+    if(!card) return;
+    const related=newsItems.filter(n=>(n.coins||[]).includes(coin.t)).slice(0,2);
+    if(!related.length) return;
+    let snip=card.querySelector('.c-snip');
+    if(!snip){
+      snip=document.createElement('div');
+      snip.className='c-snip';
+      const aiSec=card.querySelector('.ai-section');
+      if(aiSec) card.insertBefore(snip,aiSec); else card.appendChild(snip);
+    }
+    snip.innerHTML=related.map(n=>{
+      const esc=n.title.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+      const disp=n.title.slice(0,58)+(n.title.length>58?'…':'');
+      return`<div>• <a href="${n.url}" target="_blank" rel="noopener" data-orig="${esc}">${disp}</a></div>`;
+    }).join('');
+    // 若翻译已开启，翻译新加入的片段
+    if(_txOn) translateAllTitles();
+  });
+}
+
+// fetch + AbortSignal.timeout 封装，确保每个请求有独立超时
+function fetchJ(url, ms=12000){
+  return fetch(url, {signal: AbortSignal.timeout(ms)})
+    .then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); });
+}
+
+// 将 DOM 标记为超时状态
+function markTimeout(ids){
+  ids.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el && (el.innerHTML.includes('加载中') || !el.innerHTML.trim()))
+      el.innerHTML='<div style="color:var(--orange);font-size:.8rem">⏱ 超时（30s），请刷新</div>';
+  });
+}
+
+let _intel = {};
+
+async function loadAll(){
+  const btn=document.getElementById('btn-ref');
+  if(btn) btn.disabled=true;
+  document.getElementById('coins-grid').innerHTML=COIN_LIST.map(cardSkeleton).join('');
+
+  if(!await checkServer()){
+    document.getElementById('coins-grid').innerHTML=
+      `<div style="color:var(--muted);font-size:.85rem;padding:16px 0">请先启动 server.py</div>`;
+    if(btn) btn.disabled=false;
+    return;
+  }
+
+  // 30 秒安全保底：无论如何必须解除 loading 状态
+  const safety=setTimeout(()=>{
+    markTimeout(['news-panel','topics-panel','market-style-panel',
+                 'tvl-macro-panel','tvl-moves-panel','tvl-watchlist-panel',
+                 'tvl-stables-panel','tvl-bridge-panel','tvl-rwa-panel',
+                 'unlocks-panel','coin-mentions','keywords',
+                 'macro-panel','liquidity-panel']);
+    if(btn) btn.disabled=false;
+    console.warn('[Safety] 30s timeout reached');
+  }, 30000);
+
+  try {
+    // ── 快速通道：价格 + 市场数据（各自 12s 超时，真正并行）──
+    const [priceRes, marketRes] = await Promise.allSettled([
+      fetchJ(`${API}/api/prices`, 14000),
+      fetchJ(`${API}/api/market`, 12000),
+    ]);
+
+    if(priceRes.status==='fulfilled'){
+      _intel.prices = priceRes.value;
+      document.getElementById('coins-grid').innerHTML =
+        COIN_LIST.map(c=>renderCard(c, _intel.prices[c.t], [])).join('');
+      updateHeatTable();
+    } else {
+      const err = priceRes.reason?.message || '未知错误';
+      document.getElementById('coins-grid').innerHTML =
+        `<div style="color:var(--orange);font-size:.85rem;padding:16px 0">
+           价格加载失败：${err}<br>
+           <small style="color:var(--muted)">检查 server.py 是否正在运行，或点击刷新重试</small>
+         </div>`;
+      console.error('prices failed:', err);
+    }
+
+    if(marketRes.status==='fulfilled'){
+      _intel.market = marketRes.value;
+      document.getElementById('pulse').innerHTML = renderPulse(_intel.market);
+    }
+
+    // ── 慢速通道：RSS + Events + TVL（各自独立超时，真正并行）─
+    ['news-panel','topics-panel'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.innerHTML='<div class="loading-line">加载中</div>';
+    });
+
+    const [rssRes, evRes, tvlRes, unlocksRes, macroRes, fredRes] = await Promise.allSettled([
+      fetchJ(`${API}/api/rss`,     26000),
+      fetchJ(`${API}/api/events`,  12000),
+      fetchJ(`${API}/api/onchain`, 14000),
+      fetchJ(`${API}/api/unlocks`, 8000),
+      fetchJ(`${API}/api/macro`,   12000),
+      fetchJ(`${API}/api/fred`,    10000),
+    ]);
+
+    if(rssRes.status==='fulfilled'){
+      _intel.rss = rssRes.value;
+      const rss = _intel.rss;
+      document.getElementById('coin-mentions').innerHTML = renderMentions(rss.coin_mentions);
+      document.getElementById('keywords').innerHTML      = renderKeywords(rss.top_keywords);
+      document.getElementById('news-panel').innerHTML    = renderNews(rss);
+      document.getElementById('topics-panel').innerHTML  = renderTopics(rss);
+      updateCardSnippets(rss.items || []);
+      updateHeatTable();
+      updateFeedHealth(rss);
+      translateAllTitles();   // 自动翻译所有新闻标题
+    } else {
+      const err = rssRes.reason?.message || '超时';
+      const msg = `<div style="color:var(--orange);font-size:.8rem">RSS 加载失败：${err}</div>`;
+      document.getElementById('news-panel').innerHTML   = msg;
+      document.getElementById('topics-panel').innerHTML = msg;
+      document.getElementById('cfg-rss').innerHTML =
+        '<span style="color:var(--red)">加载失败</span>';
+      console.error('rss failed:', err);
+    }
+
+    // Events: stored for use inside market style panel
+    if(evRes.status==='fulfilled') _intel.events = evRes.value;
+
+    if(tvlRes.status==='fulfilled'){
+      _intel.onchain = tvlRes.value;
+      const d = _intel.onchain;
+      document.getElementById('market-style-panel').innerHTML =
+        renderMarketStyleFull(d, _intel.events);
+      document.getElementById('tvl-macro-panel').innerHTML     = renderTVLMacro(d);
+      document.getElementById('tvl-moves-panel').innerHTML     = renderTVLMoves(d);
+      document.getElementById('tvl-watchlist-panel').innerHTML = renderTVLWatchlist(d);
+      document.getElementById('tvl-stables-panel').innerHTML   = renderTVLStables(d);
+      document.getElementById('tvl-bridge-panel').innerHTML    = renderTVLBridge(d);
+      document.getElementById('tvl-rwa-panel').innerHTML       = renderTVLRwa(d);
+    } else {
+      const errHtml='<div style="color:var(--muted);font-size:.8rem">DefiLlama 加载失败</div>';
+      ['tvl-macro-panel','tvl-moves-panel','tvl-watchlist-panel',
+       'tvl-stables-panel','tvl-bridge-panel','tvl-rwa-panel'].forEach(id=>
+        document.getElementById(id).innerHTML=errHtml);
+      document.getElementById('market-style-panel').innerHTML=errHtml;
+    }
+
+    // Token unlocks — independent of TVL, fast endpoint
+    document.getElementById('unlocks-panel').innerHTML =
+      unlocksRes.status==='fulfilled'
+        ? renderUnlocks(unlocksRes.value)
+        : '<div class="tvl-no-data">解锁数据加载失败</div>';
+
+    // 宏观指标 + 流动性监控
+    _intel.macro = macroRes.status==='fulfilled' ? macroRes.value : {};
+    _intel.fred  = fredRes.status==='fulfilled'  ? fredRes.value  : {configured:false};
+    document.getElementById('macro-panel').innerHTML =
+      renderMacro(_intel.macro, (_intel.market||{}).global||{});
+    document.getElementById('liquidity-panel').innerHTML =
+      renderLiquidity(_intel.onchain, _intel.fred);
+
+    const ts=document.getElementById('ts');
+    if(ts) ts.textContent='更新于 '+new Date().toLocaleTimeString('zh-CN',{hour12:false});
+
+  } finally {
+    // 无论成功还是出错，都清除安全计时器并恢复按钮
+    clearTimeout(safety);
+    if(btn) btn.disabled=false;
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  Step 3 — 一键分析全部
+// ════════════════════════════════════════════════════════════
+let _batchRunning=false;
+
+async function analyzeAllCoins(){
+  if(_batchRunning) return;
+  _batchRunning=true;
+
+  const btn=document.getElementById('batch-btn');
+  const prog=document.getElementById('batch-progress');
+  const fill=document.getElementById('batch-bar-fill');
+  const log=document.getElementById('batch-log');
+
+  btn.disabled=true;
+  prog.style.display='block';
+  log.innerHTML='';
+
+  // 只分析有价格数据的币
+  const coins=COIN_LIST.filter(c=>(_intel.prices||{})[c.t]?.price);
+  let done=0;
+
+  for(const coin of coins){
+    log.innerHTML+=`<span style="color:var(--muted)">分析 ${coin.t}… </span>`;
+    if(fill) fill.style.width=`${(done/coins.length*100).toFixed(0)}%`;
+    try{
+      await analyzeOneCoin(coin.t);
+      log.innerHTML+=`<span style="color:var(--green)">✓</span>  `;
+    }catch{
+      log.innerHTML+=`<span style="color:var(--red)">✗</span>  `;
+    }
+    done++;
+    // 每次分析后等 3 秒，控制 API 消耗
+    if(done<coins.length) await new Promise(r=>setTimeout(r,3000));
+  }
+
+  if(fill) fill.style.width='100%';
+  log.innerHTML+=`<br><span style="color:var(--green);font-weight:700">全部 ${done} 个币分析完成</span>`;
+  btn.disabled=false;
+  _batchRunning=false;
+}
+
+// ════════════════════════════════════════════════════════════
+//  Step 4 — 今日市场主线叙事
+// ════════════════════════════════════════════════════════════
+async function loadMarketNarrative(){
+  const panel=document.getElementById('narrative-panel');
+  const btn=document.getElementById('narr-btn');
+  if(!panel) return;
+
+  btn.disabled=true;
+  panel.innerHTML='<div class="ai-loading"><div class="spin"></div>Claude 正在分析今日市场叙事，约 15-20 秒…</div>';
+  panel.style.display='block';
+
+  const rss=_intel.rss||{};
+  const prices=_intel.prices||{};
+
+  const price_movers=COIN_LIST
+    .filter(c=>prices[c.t]?.price)
+    .map(c=>({ticker:c.t, chg24:prices[c.t].chg24||0, score:prices[c.t].score||0}));
+
+  const payload={
+    news_items:   (rss.items||[]).slice(0,20),
+    top_keywords: (rss.top_keywords||[]).slice(0,12),
+    coin_mentions:(rss.coin_mentions||[]).slice(0,8),
+    price_movers,
+  };
+
+  try{
+    const r=await fetch(`${API}/api/narrative`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload),
+    });
+    const data=await r.json();
+    if(data.error){
+      panel.innerHTML=`<div class="ai-err">❌ ${data.error}</div>`;
+    } else {
+      panel.innerHTML=`<div class="ai-out">${formatAI(data.narrative)}</div>
+        <div class="ai-ts">Claude · ${data.timestamp}</div>`;
+    }
+  }catch(e){
+    panel.innerHTML=`<div class="ai-err">❌ ${e.message}</div>`;
+  }
+  btn.disabled=false;
+}
+
+// ════════════════════════════════════════════════════════════
+//  Step 5 — 叙事热度矩阵（纯前端计算，无需 API）
+// ════════════════════════════════════════════════════════════
+function renderNarrativeHeat(){
+  const rss=_intel.rss||{};
+  const prices=_intel.prices||{};
+  const mentions=rss.coin_mentions||[];
+  const maxMentions=Math.max(...mentions.map(([,n])=>n), 1);
+
+  const DIMS=[
+    {k:'price', l:'价格动能'},
+    {k:'news',  l:'媒体热度'},
+    {k:'rsi',   l:'RSI 位置'},
+    {k:'tech',  l:'技术评分'},
+    {k:'vol',   l:'成交量'},
+  ];
+  const HEAT_COINS=['WLD','SOL','PENGU','MON','XPL','BTC','ETH','ENA','ONDO','LINK'];
+
+  function heatOf(ticker){
+    const d=prices[ticker]||{};
+    if(!d.price) return null;
+    const mCnt=(mentions.find(([t])=>t===ticker)||[null,0])[1];
+    const chg=d.chg24||0; const rsiV=d.rsi?.value||50;
+    const sc=d.score||0; const vd=d.vol?.desc||'';
+    return{
+      price:Math.max(-1,Math.min(1,chg/8)),
+      news: Math.min(1,mCnt/maxMentions),
+      rsi:  (rsiV-50)/50,
+      tech: sc/5,
+      vol:  /放量涨/.test(vd)?1:/放量跌/.test(vd)?-1:0,
+    };
+  }
+
+  function cellBg(v){
+    if(v==null) return'var(--s2)';
+    if(v>=0.4)  return'rgba(63,185,80,.22)';
+    if(v>=0.15) return'rgba(63,185,80,.08)';
+    if(v<=-0.4) return'rgba(248,81,73,.22)';
+    if(v<=-0.15)return'rgba(248,81,73,.08)';
+    return'rgba(139,148,158,.06)';
+  }
+  function cellTxt(v){
+    if(v==null) return'—';
+    if(v>=0.4)  return'↑↑';
+    if(v>=0.15) return'↑';
+    if(v<=-0.4) return'↓↓';
+    if(v<=-0.15)return'↓';
+    return'→';
+  }
+  function cellColor(v){
+    if(v==null) return'var(--muted)';
+    if(v>=0.15) return'var(--green)';
+    if(v<=-0.15)return'var(--red)';
+    return'var(--muted)';
+  }
+
+  const hdr=`<tr><th>币种</th>${DIMS.map(d=>`<th>${d.l}</th>`).join('')}<th>综合</th></tr>`;
+  const rows=HEAT_COINS.map(ticker=>{
+    const h=heatOf(ticker);
+    if(!h) return`<tr><td style="color:var(--muted)">${ticker}</td>${DIMS.map(()=>'<td>—</td>').join('')}<td>—</td></tr>`;
+    const vals=DIMS.map(d=>h[d.k]||0);
+    const overall=vals.reduce((a,b)=>a+b,0)/vals.length;
+    const isPri=PRIORITY.has(ticker);
+    return`<tr>
+      <td style="font-weight:700;color:${isPri?'var(--purple)':'var(--text)'}">${ticker}</td>
+      ${DIMS.map(d=>{const v=h[d.k];
+        return`<td style="background:${cellBg(v)};color:${cellColor(v)};text-align:center">${cellTxt(v)}</td>`;
+      }).join('')}
+      <td style="background:${cellBg(overall)};color:${cellColor(overall)};font-weight:700;text-align:center">${cellTxt(overall)}</td>
+    </tr>`;
+  }).join('');
+
+  return`<div style="overflow-x:auto">
+    <table class="heat-table"><thead>${hdr}</thead><tbody>${rows}</tbody></table>
+  </div>
+  <div style="font-size:.65rem;color:var(--muted);margin-top:8px">
+    ↑↑ 强升温 · ↑ 升温 · → 中性 · ↓ 降温 · ↓↓ 强降温 &nbsp;|&nbsp; 紫色 = 优先监控币种
+  </div>`;
+}
+
+function updateHeatTable(){
+  const el=document.getElementById('heat-body');
+  if(el) el.innerHTML=renderNarrativeHeat();
+}
+
+loadAll();
+</script>
+</body>
+</html>
